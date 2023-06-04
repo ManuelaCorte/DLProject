@@ -4,7 +4,7 @@ import torch
 import pickle
 import json
 from .data_types import Sample, Split
-from utils.bbox_types import BboxType
+from vgproject.utils.bbox_types import BboxType
 from pathlib import Path
 from typing import List
 

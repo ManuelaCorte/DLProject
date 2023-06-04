@@ -1,10 +1,9 @@
 from typing import List
-from utils.bbox_types import BboxType
-from data.dataset import VGDataset
-from data.data_types import Split
-from models.baseline import Baseline
+from vgproject.utils.bbox_types import BboxType
+from vgproject.data.dataset import VGDataset
+from vgproject.data.data_types import Split
+from vgproject.models.baseline import Baseline
 from clip import clip
-from torch.utils.data import DataLoader
 import torch
 from torchvision.utils import draw_bounding_boxes
 import torchvision.transforms as T
@@ -15,7 +14,7 @@ from torchvision.ops import box_iou
 baseline = Baseline()
 
 dataset = VGDataset(
-    "data/raw/refcocog/",
+    "../data/raw/refcocog/",
     split=Split.TEST,
     output_bbox_type=BboxType.XYXY,
     transform_image=baseline.clip_preprocessor,

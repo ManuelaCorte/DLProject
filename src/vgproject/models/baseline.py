@@ -4,7 +4,7 @@ from ultralytics import YOLO
 from torchvision.transforms import ToPILImage
 from typing import List, TypedDict, Any
 from torchvision.io import read_image
-from data.data_types import Sample
+from vgproject.data.data_types import Sample
 
 
 class Baseline:
