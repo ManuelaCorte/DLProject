@@ -3,11 +3,11 @@ from torchvision.ops import box_convert
 import torch
 import pickle
 import json
-from .data_types import Sample, Split
+from .data_types import Sample, Split, BatchSample
 from vgproject.utils.bbox_types import BboxType
 from pathlib import Path
-from typing import List
-
+from typing import List, Tuple
+from torchvision.io import read_image
 
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.
 class VGDataset(Dataset):
@@ -25,8 +25,11 @@ class VGDataset(Dataset):
     def __len__(self) -> int:
         return len(self.samples)
 
-    def __getitem__(self, ref_id) -> Sample:
-        return self.samples[ref_id]
+    def __getitem__(self, ref_id) -> Tuple[BatchSample, torch.Tensor]:
+        image = read_image(self.samples[ref_id].image_path)
+        caption = self.transform_text(self.samples[ref_id].caption)
+        bbox = self.samples[ref_id].bounding_box
+        return BatchSample(image, caption), bbox
 
     def get_samples(self) -> List[Sample]:
         with open(self.dir_path + "annotations/instances.json", "r") as inst, open(
@@ -36,7 +39,7 @@ class VGDataset(Dataset):
             references = pickle.load(refs)
 
         samples: List[Sample] = []
-        for ref in references:
+        for ref in references[:1000]:
             if self.split.value == ref["split"]:
                 image_path = self.get_image_path(ref["image_id"], instances)
                 caption = self.get_longest_caption(ref["sentences"])
@@ -82,3 +85,11 @@ class VGDataset(Dataset):
                     f"Invalid output bounding box type: {self.output_bbox_type}"
                 )
         return bounding_box
+
+    def custom_collate(self, batch) -> Tuple[List[BatchSample], torch.Tensor]:
+        bboxes = []
+        samples = []
+        for sample, bbox in batch:
+            samples.append(BatchSample(sample.image, sample.caption))
+            bboxes.append(bbox)
+        return samples, torch.stack(bboxes)
