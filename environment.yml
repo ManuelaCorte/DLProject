@@ -1,5 +1,7 @@
 name: dl
 channels:
+  - pytorch
+  - nvidia
   - conda-forge
 dependencies:
   - python=3.11
@@ -9,17 +11,22 @@ dependencies:
   - pytorch-cuda=11.7
   - ca-certificates
   - openssl
-  - matplotlib
-  - mypy
-  - black
-  - certifi
-  - pandas
   - notebook
-  - python-dotenv
+  - pip
+  - certifi
+  - matplotlib
+  - pillow
+  - pyyaml
+  - requests
   - scipy
+  - tqdm
+  - pandas
+  - seaborn
+  - psutil
   - opencv
-  - simpy
-  - jaxtyping
-  - data-science-types
-  - types-openpyxl
-prefix: /home/manuela/mambaforge/envs/dl
+  - ftfy
+  - regex
+  - black
+  - pip:
+      - git+https://github.com/openai/CLIP.git
+      - ultralytics
