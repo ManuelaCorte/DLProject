@@ -86,10 +86,4 @@ class VGDataset(Dataset):
                 )
         return bounding_box
 
-    def custom_collate(self, batch) -> Tuple[List[BatchSample], torch.Tensor]:
-        bboxes = []
-        samples = []
-        for sample, bbox in batch:
-            samples.append(BatchSample(sample.image, sample.caption))
-            bboxes.append(bbox)
-        return samples, torch.stack(bboxes)
+    

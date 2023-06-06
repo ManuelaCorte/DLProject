@@ -1,4 +1,5 @@
 from vgproject.utils.bbox_types import BboxType
+from vgproject.utils.misc import custom_collate
 from vgproject.data.dataset import VGDataset
 from vgproject.data.data_types import Split
 from vgproject.models.baseline import Baseline
@@ -18,7 +19,7 @@ test_data = VGDataset(
     transform_text=clip.tokenize,
 )
 
-dataloader = DataLoader(test_data, batch_size=16, shuffle=False, collate_fn=test_data.custom_collate, drop_last=True)
+dataloader = DataLoader(test_data, batch_size=16, shuffle=False, collate_fn=custom_collate, drop_last=True)
 
 
 batches_acc = []
@@ -30,10 +31,10 @@ for batch, bboxes in dataloader:
     iou = box_iou(bbox_pred, bbox_gt)
     acc = torch.mean(torch.diagonal(iou))
     batches_acc.append(acc)
-    # print('Accuracy: ', acc)
+    print('Accuracy: ', acc)
 
 accuracy = torch.mean(torch.stack(batches_acc))
 print('Accuracy: ', accuracy)
 
 
-# tensor([0.5292]) Overall accuracy
+# tensor([0.5292]) 0.5263 Overall accuracy
