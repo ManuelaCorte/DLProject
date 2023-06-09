@@ -17,7 +17,7 @@ test_data = VGDataset(
     output_bbox_type=BboxType.XYXY,
     transform_image= T.Compose([T.Resize(640), T.ToTensor()]),
     transform_text=clip.tokenize,
-    dependencies=True
+    dependencies=False
 )
 
 dataloader = DataLoader(test_data, batch_size=16, shuffle=False, collate_fn=custom_collate, drop_last=True)

@@ -96,14 +96,14 @@ class VGDataset(Dataset):
     def get_relevant_caption(self, doc) -> str:
         # for chunck in doc.noun_chunks:
         #         return chunck.text
-        for token in doc:
-            # Mainly -ing verbs
-            if("acl" in token.dep_):
-                subtree = list(token.subtree)
-                end = subtree[0].i
-                sent = doc[0:end]
-                if len(sent) > 1:
-                    return sent
+        # for token in doc:
+        #     # Mainly -ing verbs
+        #     if("acl" in token.dep_):
+        #         subtree = list(token.subtree)
+        #         end = subtree[0].i
+        #         sent = doc[0:end]
+        #         if len(sent) > 1:
+        #             return sent
 
         # subject which/that something
         for token in doc:
