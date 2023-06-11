@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from vgproject.utils.bbox_types import BboxType
 from vgproject.utils.misc import custom_collate
 from vgproject.data.dataset import VGDataset
@@ -24,7 +25,7 @@ dataloader = DataLoader(test_data, batch_size=16, shuffle=False, collate_fn=cust
 
 
 batches_acc = []
-for batch, bboxes in dataloader:
+for batch, bboxes in tqdm(dataloader):
     prediction = baseline.predict(batch)
     bbox_pred = torch.stack([p.bounding_box for p in prediction])
     bbox_gt = bboxes.clone().detach().squeeze(1)
@@ -32,10 +33,10 @@ for batch, bboxes in dataloader:
     iou = box_iou(bbox_pred, bbox_gt)
     acc = torch.mean(torch.diagonal(iou))
     batches_acc.append(acc)
-    print('Accuracy: ', acc)
+    # print('Accuracy: ', acc)
 
 accuracy = torch.mean(torch.stack(batches_acc))
 print('Accuracy: ', accuracy)
 
 
-# tensor([0.5292]) 0.5263 Overall accuracy
+#0.5263 Overall accuracy 0.5340

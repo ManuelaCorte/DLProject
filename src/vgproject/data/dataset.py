@@ -14,7 +14,13 @@ import spacy
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.
 class VGDataset(Dataset):
     def __init__(
-        self, dir_path, split, output_bbox_type, transform_image, transform_text, dependencies=False
+        self,
+        dir_path,
+        split,
+        output_bbox_type,
+        transform_image,
+        transform_text,
+        dependencies=False,
     ) -> None:
         super().__init__()
         self.dir_path: str = dir_path
@@ -42,7 +48,7 @@ class VGDataset(Dataset):
             references = pickle.load(refs)
 
         samples: List[Sample] = []
-        for ref in references[:200]:
+        for ref in references:
             if self.split.value == ref["split"]:
                 image_path = self.get_image_path(ref["image_id"], instances)
                 caption = self.get_caption(ref["sentences"], dependencies)
@@ -63,7 +69,9 @@ class VGDataset(Dataset):
             if len(caption["sent"]) > len(longest_caption["sent"]):
                 longest_caption = caption
         if dependencies:
-            caption = self.get_relevant_caption(self.text_processor(longest_caption["sent"]))
+            caption = self.get_relevant_caption(
+                self.text_processor(longest_caption["sent"])
+            )
             return str(caption)
         return longest_caption["sent"]
 
@@ -91,7 +99,6 @@ class VGDataset(Dataset):
                     f"Invalid output bounding box type: {self.output_bbox_type}"
                 )
         return bounding_box
-    
 
     def get_relevant_caption(self, doc) -> str:
         # for chunck in doc.noun_chunks:
@@ -107,16 +114,16 @@ class VGDataset(Dataset):
 
         # subject which/that something
         for token in doc:
-            if("relcl" in token.dep_):
+            if "relcl" in token.dep_:
                 subtree = list(token.subtree)
                 end = subtree[0].i
                 sent = doc[0:end]
                 if len(sent) > 1:
                     return sent
-                
+
         # Subjects
         for token in doc:
-            if ("subj" in token.dep_):
+            if "subj" in token.dep_:
                 subtree = list(token.subtree)
                 start = subtree[0].i
                 end = subtree[-1].i + 1
@@ -124,8 +131,3 @@ class VGDataset(Dataset):
                 if len(sent) > 1:
                     return sent
         return doc
-        
-        
-
-
-    
