@@ -1,14 +1,14 @@
 name: dl
 channels:
+  - conda-forge
   - pytorch
   - nvidia
-  - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.10
   - pytorch
   - torchvision
   - torchaudio
-  - pytorch-cuda=11.7
+  - pytorch-cuda=11.8
   - ca-certificates
   - openssl
   - notebook
@@ -19,6 +19,7 @@ dependencies:
   - pyyaml
   - requests
   - scipy
+  - spacy
   - tqdm
   - pandas
   - seaborn
@@ -27,6 +28,10 @@ dependencies:
   - ftfy
   - regex
   - black
+  - mypy
+  - types-tqdm
+  - types-pillow
+  - types-setuptools
   - pip:
       - git+https://github.com/openai/CLIP.git
       - ultralytics
