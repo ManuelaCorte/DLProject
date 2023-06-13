@@ -1,23 +1,23 @@
+from io import BufferedReader
 import pickle
 import json
-from pathlib import Path
-from typing import List, TypedDict
+from typing import Any, Dict, List, TypedDict
 
 raw_data_path = "data/raw/refcocog/"
 processed_data_path = "data/processed/refcocog/"
 processed_data_path = "/media/manuela/SSK Storage/processed/"
 
 
-def get_image_path(img_id: int) -> Path:
+def get_image_path(img_id: int) -> str:
     # find image in instances with id euqal to img_id
     image_name = next(
         image["file_name"] for image in instances["images"] if image["id"] == img_id
     )
-    image_path = Path(raw_data_path) / "images" / Path(image_name)
+    image_path = raw_data_path + "images" + image_name
     return image_path
 
 
-def get_longest_caption(captions: List) -> str:
+def get_longest_caption(captions: List[Dict[str, Any]]) -> str:
     longest_caption = captions[0]
     for caption in captions:
         if len(caption["sent"]) > len(longest_caption["sent"]):
@@ -26,7 +26,7 @@ def get_longest_caption(captions: List) -> str:
 
 
 # Bounding boxed converted to format compatible with yolo or torchvision
-def get_bounding_box(ann_id) -> List[int]:
+def get_bounding_box(ann_id: int) -> List[int]:
     bbox = next(ann["bbox"] for ann in instances["annotations"] if ann["id"] == ann_id)
     return bbox
 
@@ -36,30 +36,30 @@ References = TypedDict(
     {
         "image_id": int,
         "split": str,
-        "sentences": List,
+        "sentences": List[Dict[str, Any]],
         "file_name": str,
         "category_id": int,
         "ann_id": int,
-        "sent_ids": List,
+        "sent_ids": Dict[str, Any],
         "ref_id": int,
     },
 )
-with open(raw_data_path + "annotations/instances.json", "r") as inst, open(
+with open(raw_data_path + "annotations/instances.json", "r") as insts, open(
     raw_data_path + "annotations/refs(umd).p", "rb"
-) as ref:
-    instances = json.load(inst)
-    references = pickle.load(ref)
+) as refs:
+    instances = json.load(insts)
+    references: List[References] = pickle.load(refs)
 
-processed_data_train = []
-processed_data_val = []
-processed_data_test = []
+processed_data_train: List[Dict[str, Any]] = []
+processed_data_val: List[Dict[str, Any]] = []
+processed_data_test: List[Dict[str, Any]] = []
 
 for ref in references:
-    image = get_image_path(ref["image_id"])  # type: ignore
-    caption = get_longest_caption(ref["sentences"])  # type: ignore
-    bbox = get_bounding_box(ref["ann_id"])  # type: ignore
+    image = get_image_path(ref["image_id"])
+    caption = get_longest_caption(ref["sentences"])
+    bbox = get_bounding_box(ref["ann_id"])
 
-    match ref["split"]:  # type: ignore
+    match ref["split"]:
         case "train":
             processed_data_train.append(
                 {

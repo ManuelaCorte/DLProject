@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from pathlib import Path
 from enum import Enum
 from torch import Tensor
 
+
 @dataclass(frozen=True)
 class Sample:
-    image_path: Path
+    image_path: str
     caption: str
     bounding_box: Tensor
 
@@ -22,8 +22,8 @@ class Split(Enum):
     VAL = "val"
     TEST = "test"
 
+
 @dataclass(frozen=True)
 class Result:
     bounding_box: Tensor
     score: Tensor
-
