@@ -20,10 +20,14 @@ class Baseline:
         print(f"Using device: {self.device}")
         self.clip_model: CLIP
         self.clip_preprocessor: Compose
-        self.clip_model, self.clip_preprocessor = clip.load("RN50", device=self.device)
+        self.clip_model, self.clip_preprocessor = clip.load(
+            name="RN50", device=self.device
+        )
         self.yolo: YOLO = YOLO()
 
     def predict(self, batch: List[BatchSample]) -> List[Result]:
+        # for sample in batch:
+        #     print(f"image: {sample.image.is_cuda}, caption: {sample.caption.is_cuda}")
         images: List[Image.Image] = [ToPILImage()(sample.image) for sample in batch]
         batch_bbox_predictions: List[Results] | None = self.yolo(
             images, max_det=50, verbose=False, device=self.device
@@ -38,17 +42,21 @@ class Baseline:
             crops: List[torch.Tensor] = []
             blurs: List[torch.Tensor] = []
             boxes: List[torch.Tensor] = []
+
             for bbox in image_bboxes.boxes:  # type: ignore
+                bbox = bbox.to(self.device)
                 xmin, ymin, xmax, ymax = bbox.xyxy.int()[0]  # type: ignore
-                boxes.append(torch.tensor([xmin, ymin, xmax, ymax]))
-                blurred: Tensor = GaussianBlur(25, 50)(sample.image)
+                boxes.append(torch.tensor([xmin, ymin, xmax, ymax]).to(self.device))
+                blurred: Tensor = GaussianBlur(25, 50)(sample.image).to(self.device)
                 blurred[:, ymin:ymax, xmin:xmax] = image[:, ymin:ymax, xmin:xmax]
                 blurs.append(blurred)
                 crops.append(image[:, ymin:ymax, xmin:xmax])
             if len(crops) == 0:
                 results.append(Result(torch.tensor([0, 0, 0, 0]), torch.tensor([0])))
                 continue
-            scores: Tensor = self.compute_clip_similarity(crops, blurs, sample.caption)
+            scores: Tensor = self.compute_clip_similarity(
+                crops, blurs, sample.caption.to(self.device)
+            )
             max_score: Tensor = torch.argmax(scores)
             results.append(Result(boxes[max_score], scores[max_score]))
             # print(results)
@@ -68,7 +76,10 @@ class Baseline:
         images_crops: Tensor = torch.stack(tensors=crops).to(device=self.device)
         # print(images.shape)
         logits_per_image_crops, _ = self.clip_model(images_crops, caption)
-        images_blurs: Tensor = torch.stack(tensors=blurs)
+        images_blurs: Tensor = torch.stack(
+            tensors=blurs,
+        ).to(device=self.device)
         # print(images.shape)
         logits_per_image_blurs, _ = self.clip_model(images_blurs, caption)
+
         return logits_per_image_crops + logits_per_image_blurs

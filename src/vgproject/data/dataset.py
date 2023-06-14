@@ -31,18 +31,22 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         self.output_bbox_type: BboxType = output_bbox_type
         self.transform_image = transform_image
         self.transform_text = transform_text
-        self.text_processor = spacy.load("en_core_web_lg")
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.samples: List[Sample] = self.get_samples(dependencies)
+        self.text_processor = spacy.load(name="en_core_web_lg")
+        self.device = torch.device(
+            device="cuda" if torch.cuda.is_available() else "cpu"
+        )
+        self.samples: List[Sample] = self.get_samples(dependencies=dependencies)
 
     def __len__(self) -> int:
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
-        image = read_image(self.samples[ref_id].image_path).to(self.device)
-        caption = self.transform_text(self.samples[ref_id].caption).to(self.device)
-        bbox: Tensor = self.samples[ref_id].bounding_box.to(self.device)
-        return BatchSample(image, caption), bbox
+        image = read_image(self.samples[ref_id].image_path)
+        caption = self.transform_text(self.samples[ref_id].caption)
+        bbox: Tensor = self.samples[ref_id].bounding_box.to(device=self.device)
+        sample = BatchSample(image, caption)
+        sample.to(self.device)
+        return sample, bbox
 
     def get_samples(self, dependencies: bool = False) -> List[Sample]:
         with open(self.dir_path + "annotations/instances.json", "r") as inst, open(

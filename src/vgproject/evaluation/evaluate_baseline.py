@@ -1,9 +1,9 @@
-from typing import Any, List
+from typing import Any, List, Tuple
 from tqdm import tqdm
 from vgproject.utils.bbox_types import BboxType
 from vgproject.utils.misc import custom_collate
 from vgproject.data.dataset import VGDataset
-from vgproject.data.data_types import Result, Split
+from vgproject.data.data_types import BatchSample, Result, Split
 from vgproject.models.baseline import Baseline
 from clip import clip
 import torch
@@ -23,16 +23,22 @@ test_data = VGDataset(
     dependencies=False,
 )
 
-dataloader: Any = DataLoader(
-    test_data, batch_size=16, shuffle=False, collate_fn=custom_collate, drop_last=True
+dataloader: DataLoader[Any] = DataLoader(
+    dataset=test_data,
+    batch_size=16,
+    shuffle=False,
+    collate_fn=custom_collate,
+    drop_last=True,
 )
 
 
 batches_acc: List[Tensor] = []
 for batch, bboxes in tqdm(dataloader):
     prediction: List[Result] = baseline.predict(batch)
-    bbox_pred: Tensor = torch.stack([p.bounding_box for p in prediction])
-    bbox_gt: Tensor = bboxes.clone().detach().squeeze(1)
+    bbox_pred: Tensor = torch.stack([p.bounding_box for p in prediction]).to(
+        baseline.device
+    )
+    bbox_gt: Tensor = bboxes.clone().detach().squeeze(1).to(baseline.device)
     # print(bbox_pred.shape, bbox_gt.shape)
     iou = box_iou(bbox_pred, bbox_gt)
     acc = torch.mean(torch.diagonal(iou))
@@ -41,6 +47,5 @@ for batch, bboxes in tqdm(dataloader):
 
 accuracy = torch.mean(torch.stack(batches_acc))
 print("Accuracy: ", accuracy)
-
 
 # 0.5263 Overall accuracy 0.5340
