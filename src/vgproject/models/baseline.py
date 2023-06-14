@@ -29,12 +29,11 @@ class Baseline:
         # for sample in batch:
         #     print(f"image: {sample.image.is_cuda}, caption: {sample.caption.is_cuda}")
         images: List[Image.Image] = [ToPILImage()(sample.image) for sample in batch]
-        batch_bbox_predictions: List[Results] | None = self.yolo(
+        batch_bbox_predictions: List[Results] = self.yolo(
             images, max_det=50, verbose=False, device=self.device
         )
         results: List[Result] = []
-        if batch_bbox_predictions is None:
-            return results
+
         for sample, image_bboxes in tqdm(
             zip(batch, batch_bbox_predictions, strict=True)
         ):
@@ -46,13 +45,18 @@ class Baseline:
             for bbox in image_bboxes.boxes:  # type: ignore
                 bbox = bbox.to(self.device)
                 xmin, ymin, xmax, ymax = bbox.xyxy.int()[0]  # type: ignore
-                boxes.append(torch.tensor([xmin, ymin, xmax, ymax]).to(self.device))
+                boxes.append(torch.tensor([xmin, ymin, xmax, ymax], device=self.device))
                 blurred: Tensor = GaussianBlur(25, 50)(sample.image).to(self.device)
                 blurred[:, ymin:ymax, xmin:xmax] = image[:, ymin:ymax, xmin:xmax]
                 blurs.append(blurred)
                 crops.append(image[:, ymin:ymax, xmin:xmax])
             if len(crops) == 0:
-                results.append(Result(torch.tensor([0, 0, 0, 0]), torch.tensor([0])))
+                results.append(
+                    Result(
+                        torch.tensor([0, 0, 0, 0], device=self.device),
+                        torch.tensor([0], device=self.device),
+                    )
+                )
                 continue
             scores: Tensor = self.compute_clip_similarity(
                 crops, blurs, sample.caption.to(self.device)

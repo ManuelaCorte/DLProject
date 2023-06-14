@@ -23,9 +23,10 @@ test_data = VGDataset(
     dependencies=False,
 )
 
+batch_size = 16
 dataloader: DataLoader[Any] = DataLoader(
     dataset=test_data,
-    batch_size=16,
+    batch_size=batch_size,
     shuffle=False,
     collate_fn=custom_collate,
     drop_last=True,
@@ -39,7 +40,7 @@ for batch, bboxes in tqdm(dataloader):
         baseline.device
     )
     bbox_gt: Tensor = bboxes.clone().detach().squeeze(1).to(baseline.device)
-    # print(bbox_pred.shape, bbox_gt.shape)
+    print(bbox_pred.shape, bbox_gt.shape)
     iou = box_iou(bbox_pred, bbox_gt)
     acc = torch.mean(torch.diagonal(iou))
     batches_acc.append(acc)
