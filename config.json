@@ -1,0 +1,10 @@
+{
+  "dataset": {
+    "path": "../data/raw/refcocog/",
+    "split": "test"
+  },
+  "model": {
+    "name": "baseline",
+    "batch_size": 16
+  }
+}

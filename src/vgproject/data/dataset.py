@@ -133,5 +133,5 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
                 end = subtree[-1].i + 1
                 sent_subj: Span = doc[start:end]
                 if len(sent_subj) > 1:
-                    return str(sent)
+                    return str(sent_subj)
         return str(doc)
