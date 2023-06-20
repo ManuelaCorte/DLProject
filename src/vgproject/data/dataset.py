@@ -8,8 +8,6 @@ from vgproject.utils.bbox_types import BboxType
 from typing import Any, Dict, List, Tuple
 from torchvision.io import read_image
 import spacy
-
-# from torchvision.transforms.transforms import Compose
 from spacy.tokens import Doc, Span
 from torch import Tensor, tensor
 
