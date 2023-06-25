@@ -1,21 +1,25 @@
 from typing import List, OrderedDict
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 from torch import Tensor
-
-from vgproject.data.data_types import BatchSample
+from vgproject.data.dataset import VGDataset
+from vgproject.utils.misc import custom_collate, transform_sample
+from vgproject.utils.config import Config
+from vgproject.utils.bbox_types import BboxType
+from clip import clip
+from vgproject.data.data_types import BatchSample, Split
 from .visual_encoder import VisualEncoder
 from .text_encoder import TextEncoder
 
 
-# TODO: maybe add LN and REG token
 class VGModel(nn.Module):
     def __init__(
         self,
         emb_dim: int = 1024,
     ) -> None:
         super().__init__()
-        self.emb_dim = emb_dim
+        self.emb_dim: int = emb_dim
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.visual_backbone: VisualEncoder = VisualEncoder().to(self.device)
         self.text_encoder: TextEncoder = TextEncoder().to(self.device)
@@ -25,13 +29,16 @@ class VGModel(nn.Module):
             batch_first=True,
             device=self.device,
         )
-        self.reg_head = MLP(emb_dim * 5, 4, 256).to(self.device)
+        self.pooling: nn.AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(emb_dim)
+        self.reg_head: MLP = MLP(emb_dim, 4, 256).to(self.device)
 
-    def forward(self, sample: BatchSample) -> Tensor:
-        visual_features_dict: OrderedDict[str, Tensor] = self.visual_backbone(
-            sample.image
-        )
-        text_features: Tensor = self.text_encoder(sample.caption)
+    def forward(self, batch: List[BatchSample]) -> Tensor:
+        captions: Tensor = torch.stack([sample.caption for sample in batch]).squeeze(1)
+        text_features: Tensor = self.text_encoder(captions)
+
+        images: Tensor = torch.stack([sample.image for sample in batch])
+        visual_features_dict: OrderedDict[str, Tensor] = self.visual_backbone(images)
+
         attended_features: List[Tensor] = []
         for visual_features in visual_features_dict.values():
             attention: Tensor = self.attention_layer(
@@ -40,7 +47,8 @@ class VGModel(nn.Module):
             attended_features.append(attention[0])
 
         aggregated_features: Tensor = torch.cat(attended_features, dim=1)
-        return self.reg_head(aggregated_features)
+        pooled_features: Tensor = self.pooling(aggregated_features)
+        return self.reg_head(pooled_features)
 
 
 class MLP(nn.Module):
@@ -60,11 +68,22 @@ class MLP(nn.Module):
 
 
 if __name__ == "__main__":
-    test = VGModel()
-    sample = BatchSample(
-        image=torch.rand(1, 3, 224, 224),
-        caption=torch.rand(1, 77),
+    cfg = Config.get_instance()  # type: ignore
+    dataset = VGDataset(
+        dir_path=cfg.dataset["path"],
+        split=Split.TEST,
+        output_bbox_type=BboxType.XYXY,
+        transform_image=transform_sample,
+        transform_text=clip.tokenize,
     )
-    out = test(sample)
-    print(out)
-    print(out.shape)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=cfg.model["batch_size"],
+        collate_fn=custom_collate,
+        drop_last=True,
+    )
+    test = VGModel()
+    for batch, bbox in dataloader:
+        out = test(batch)
+        print(out)
+        print(out.shape)

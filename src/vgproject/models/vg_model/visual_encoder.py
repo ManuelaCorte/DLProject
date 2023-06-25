@@ -29,23 +29,28 @@ class VisualEncoder(nn.Module):
 
         return hook
 
-    def forward(self, x: Tensor) -> OrderedDict[str, Any]:
-        out: Tensor = self.pretrained_model(x)
+    @torch.no_grad()
+    def forward(self, batch: Tensor) -> OrderedDict[str, Any]:
+        self.layers_outputs = self.layers_outputs.fromkeys(
+            self.layers_outputs, torch.Tensor()
+        )
+
+        out: Tensor = self.pretrained_model(batch)
+        self.layers_outputs["output"] = out
 
         for layer in self.layers_outputs.keys():
-            layer_features = self.layers_outputs[layer]
-            pooling_size: int = layer_features.shape[-1] // 2
-            pooling_layer = nn.AdaptiveAvgPool2d((pooling_size, pooling_size))
-            pooling_features: Tensor = pooling_layer(layer_features)
+            if layer != "output":
+                layer_features = self.layers_outputs[layer]
+                pooling_size: int = layer_features.shape[-1] // 2
+                pooling_layer = nn.AdaptiveAvgPool2d(pooling_size)
+                pooling_features: Tensor = pooling_layer(layer_features)
 
-            flat_features = torch.flatten(pooling_features, start_dim=1)
-            ll1 = nn.Linear(in_features=flat_features.shape[1], out_features=1024)
-            relu = nn.ReLU()
-            out_layer = ll1(flat_features)
-            out_layer = relu(out_layer)
-            self.layers_outputs[layer] = out_layer
-
-        self.layers_outputs["output"] = out
+                flat_features = torch.flatten(pooling_features, start_dim=1)
+                ll1 = nn.Linear(in_features=flat_features.shape[1], out_features=1024)
+                relu = nn.ReLU()
+                out_layer = ll1(flat_features)
+                out_layer = relu(out_layer)
+                self.layers_outputs[layer] = out_layer
 
         return self.layers_outputs
 
@@ -53,6 +58,6 @@ class VisualEncoder(nn.Module):
 # Test
 if __name__ == "__main__":
     test = VisualEncoder()
-    layers = test(torch.rand(1, 3, 224, 224))
+    layers: OrderedDict[str, Any] = test(torch.rand(1, 3, 224, 224))
     for layer in layers:
         print(f"{layer} with shape: {layers[layer].shape}")

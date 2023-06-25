@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
+
 from torch import Tensor, device
 
 
@@ -15,9 +17,11 @@ class BatchSample:
         self.image: Tensor = image
         self.caption: Tensor = caption
 
-    def to(self, device: device | str) -> None:
-        self.image = self.image.to(device)
-        self.caption = self.caption.to(device)
+    def to(self, device: device | str) -> Any:
+        return self.__class__(self.image.to(device), self.caption.to(device))
+
+    def __str__(self) -> str:
+        return f"BatchSample(image={self.image.shape}, caption={self.caption.shape})"
 
 
 @dataclass(frozen=True)

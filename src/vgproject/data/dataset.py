@@ -10,6 +10,7 @@ from torchvision.io import read_image
 import spacy
 from spacy.tokens import Doc, Span
 from torch import Tensor, tensor
+from PIL import Image
 
 
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.
@@ -39,12 +40,21 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
-        image = read_image(self.samples[ref_id].image_path)
         caption = self.transform_text(self.samples[ref_id].caption)
-        bbox: Tensor = self.samples[ref_id].bounding_box.to(device=self.device)
-        sample = BatchSample(image, caption)
-        sample.to(self.device)
-        return sample, bbox
+
+        if self.transform_image is not None:
+            image_trans, bbox_trans = self.transform_image(
+                Image.open(self.samples[ref_id].image_path),
+                self.samples[ref_id].bounding_box,
+                device=self.device,
+            )
+            sample = BatchSample(image_trans, caption).to(self.device)
+            return sample, bbox_trans
+        else:
+            image = read_image(self.samples[ref_id].image_path)
+            bbox: Tensor = self.samples[ref_id].bounding_box.to(device=self.device)
+            sample = BatchSample(image, caption).to(self.device)
+            return sample, bbox
 
     def get_samples(self, dependencies: bool = False) -> List[Sample]:
         with open(self.dir_path + "annotations/instances.json", "r") as inst, open(

@@ -25,6 +25,6 @@ class TextEncoder(nn.Module):
 # Test
 if __name__ == "__main__":
     test = TextEncoder()
-    output = test("Test phrase")
+    output: Tensor = test("Test phrase")
     print(output)
     print(output.shape)

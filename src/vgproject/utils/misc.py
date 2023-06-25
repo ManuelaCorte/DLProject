@@ -1,6 +1,10 @@
 from typing import List, Tuple
 import torch
 from vgproject.data.data_types import BatchSample
+from torch import Tensor, device
+import numpy as np
+import torchvision.transforms as T
+from PIL import Image
 
 
 def custom_collate(
@@ -12,3 +16,35 @@ def custom_collate(
         samples.append(BatchSample(sample.image, sample.caption))
         bboxes.append(bbox)
     return samples, torch.stack(bboxes)
+
+
+# Bounding box already in the correct format
+def transform_sample(
+    image: Image.Image,
+    box: Tensor,
+    target_size: int = 224,
+    device: device = torch.device("cpu"),
+) -> Tuple[Tensor, Tensor]:
+    x, y = image.size[0], image.size[1]
+
+    x_scale = target_size / x
+    y_scale = target_size / y
+
+    trans = T.Compose(
+        transforms=[
+            T.Resize((target_size, target_size)),
+            T.CenterCrop(target_size),
+            T.PILToTensor(),
+        ]
+    )
+    image_tensor: Tensor = trans(image).to(device)  # type: ignore
+
+    xmin, ymin, xmax, ymax = box.squeeze(0)
+
+    xmin = np.round(xmin * x_scale).__int__()
+    ymin = np.round(ymin * y_scale).__int__()
+    xmax = np.round(xmax * x_scale).__int__()
+    ymax = np.round(ymax * y_scale).__int__()
+
+    bbox_tensor: Tensor = torch.tensor([[xmin, ymin, xmax, ymax]], device=device)
+    return image_tensor, bbox_tensor
