@@ -20,7 +20,7 @@ def main() -> None:
     config = Config.get_instance()  # type: ignore
     dataset = VGDataset(
         dir_path=config.dataset["path"],
-        split=Split.TEST,
+        split=Split.TRAIN,
         output_bbox_type=BboxType.XYXY,
         transform_image=transform_sample,
         transform_text=clip.tokenize,
