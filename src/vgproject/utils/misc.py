@@ -41,10 +41,10 @@ def transform_sample(
 
     xmin, ymin, xmax, ymax = box.squeeze(0)
 
-    xmin = np.round(xmin * x_scale).__int__()
-    ymin = np.round(ymin * y_scale).__int__()
-    xmax = np.round(xmax * x_scale).__int__()
-    ymax = np.round(ymax * y_scale).__int__()
+    xmin = np.round(xmin * x_scale)
+    ymin = np.round(ymin * y_scale)
+    xmax = np.round(xmax * x_scale)
+    ymax = np.round(ymax * y_scale)
 
-    bbox_tensor: Tensor = torch.tensor([[xmin, ymin, xmax, ymax]], device=device)
+    bbox_tensor: Tensor = torch.tensor([xmin, ymin, xmax, ymax], device=device)
     return image_tensor, bbox_tensor

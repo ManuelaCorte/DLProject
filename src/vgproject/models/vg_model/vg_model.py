@@ -29,7 +29,9 @@ class VGModel(nn.Module):
             batch_first=True,
             device=self.device,
         )
-        self.pooling: nn.AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(emb_dim)
+        self.pooling: nn.AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(emb_dim).to(
+            self.device
+        )
         self.reg_head: MLP = MLP(emb_dim, 4, 256).to(self.device)
 
     def forward(self, batch: List[BatchSample]) -> Tensor:

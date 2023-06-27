@@ -25,6 +25,6 @@ class TextEncoder(nn.Module):
 # Test
 if __name__ == "__main__":
     test = TextEncoder()
-    output: Tensor = test("Test phrase")
+    output: Tensor = torch.randn(1, 77)
     print(output)
     print(output.shape)
