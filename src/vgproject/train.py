@@ -1,5 +1,5 @@
 import os
-from typing import List, Tuple
+from typing import Any, List, Tuple
 from vgproject.data.dataset import VGDataset
 from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.bbox_types import BboxType
@@ -13,36 +13,50 @@ from torch import Tensor
 import torch
 import torch.optim as optim
 from tqdm import tqdm
-from clip import clip
 
 
 def main() -> None:
     config = Config.get_instance()  # type: ignore
-    dataset = VGDataset(
-        dir_path=config.dataset["path"],
-        split=Split.TRAIN,
+    dataset: VGDataset = VGDataset(
+        dir_path=config.dataset_path,
+        split=Split.TEST,
         output_bbox_type=BboxType.XYXY,
         transform_image=transform_sample,
-        transform_text=clip.tokenize,
     )
 
-    dataloader = DataLoader(
+    dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
         dataset=dataset,
-        batch_size=config.model["batch_size"],
+        batch_size=config.batch_size,
         collate_fn=custom_collate,
         shuffle=True,
         drop_last=True,
     )
 
-    model = VGModel(emb_dim=config.model["emb_dim"]).train()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    loss_epoch: List[float] = []
+
+    if config.logging["resume"]:
+        checkpoint: Any = torch.load(config.logging["path"] + "model.pth")
+        model = VGModel().to(device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer = optim.AdamW(model.parameters(), lr=config.model["lr"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        lr_scheduler = optim.lr_scheduler.ExponentialLR(
+            optimizer, gamma=config.model["gamma"]
+        )
+        lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
+        epoch: int = checkpoint["epoch"]
+        loss_epoch.append(checkpoint["loss"])
+
+    model = VGModel().train()
     optimizer = optim.AdamW(model.parameters(), lr=config.model["lr"])
     lr_scheduler = optim.lr_scheduler.ExponentialLR(
         optimizer, gamma=config.model["gamma"]
     )
 
-    loss_epoch: List[Tensor] = []
-    for epoch in tqdm(range(config.model["epochs"]), desc="Epochs"):
-        loss_epoch.append(train_one_epoch(dataloader, model, optimizer))
+    for epoch in tqdm(range(config.epochs), desc="Epochs"):
+        loss: float = train_one_epoch(dataloader, model, optimizer).cpu().item()
+        loss_epoch.append(loss)
         lr_scheduler.step()
 
         # Save model after each epoch
@@ -50,8 +64,17 @@ def main() -> None:
             dir = config.logging["path"]
             if not os.path.exists(dir):
                 os.makedirs(dir)
-            torch.save(model.state_dict(), f"{config.logging['path']}model_{epoch}.pth")
-
+            torch.save(
+                {
+                    "epoch": epoch,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "lr_scheduler_state_dict": lr_scheduler.state_dict(),
+                    "loss": loss,
+                },
+                f"{config.logging['path']}model.pth",
+            )
+        torch.clear_autocast_cache()
     print(loss_epoch)
 
 

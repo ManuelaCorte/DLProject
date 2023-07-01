@@ -9,8 +9,9 @@ from typing import Any, Dict, List, Tuple
 from torchvision.io import read_image
 import spacy
 from spacy.tokens import Doc, Span
-from torch import Tensor, tensor
+from torch import Tensor, tensor, device
 from PIL import Image
+from clip import clip
 
 
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.
@@ -20,8 +21,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         dir_path: str,
         split: Split,
         output_bbox_type: BboxType,
-        transform_image: Any,
-        transform_text: Any,
+        transform_image: Any = None,
         dependencies: bool = False,
     ) -> None:
         super().__init__()
@@ -29,9 +29,8 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         self.split: Split = split
         self.output_bbox_type: BboxType = output_bbox_type
         self.transform_image = transform_image
-        self.transform_text = transform_text
         self.text_processor = spacy.load(name="en_core_web_lg")
-        self.device = torch.device(
+        self.device: device = torch.device(
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
         self.samples: List[Sample] = self.get_samples(dependencies=dependencies)
@@ -40,7 +39,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
-        caption = self.transform_text(self.samples[ref_id].caption)
+        caption: Tensor = clip.tokenize(self.samples[ref_id].caption)
 
         if self.transform_image is not None:
             image_trans, bbox_trans = self.transform_image(
@@ -48,12 +47,14 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
                 self.samples[ref_id].bounding_box,
                 device=self.device,
             )
-            sample = BatchSample(image_trans, caption).to(self.device)
-            return sample, bbox_trans
+            sample_trans: BatchSample = BatchSample(image_trans, caption).to(
+                self.device
+            )
+            return sample_trans, bbox_trans
         else:
-            image = read_image(self.samples[ref_id].image_path)
+            image: Tensor = read_image(self.samples[ref_id].image_path)
             bbox: Tensor = self.samples[ref_id].bounding_box.to(device=self.device)
-            sample = BatchSample(image, caption).to(self.device)
+            sample: BatchSample = BatchSample(image, caption).to(self.device)
             return sample, bbox
 
     def get_samples(self, dependencies: bool = False) -> List[Sample]:
@@ -62,7 +63,6 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         ) as refs:
             instances = json.load(inst)
             references = pickle.load(refs)
-
         samples: List[Sample] = []
         for ref in references:
             if self.split.value == ref["split"]:
@@ -88,7 +88,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
             return self.get_relevant_caption(
                 doc=self.text_processor(longest_caption["sent"])
             )
-        return longest_caption["sent"]
+        return f"find the region that corresponds to the description {longest_caption['sent']}"
 
     # Bounding boxed converted to format compatible with yolo or torchvision
     def get_bounding_box(self, ann_id: int, instances: Dict[str, Any]) -> Tensor:

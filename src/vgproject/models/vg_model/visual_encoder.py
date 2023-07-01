@@ -1,9 +1,11 @@
-from typing import Any, Callable, OrderedDict
+from typing import Any, Callable, List, OrderedDict
 from clip.model import ModifiedResNet
 import clip
 import torch
 import torch.nn as nn
 from torch import Tensor
+
+from vgproject.utils.config import Config
 
 
 # Class that gets output for all layes of the backbone
@@ -16,48 +18,56 @@ class VisualEncoder(nn.Module):
             0
         ].visual  # type: ignore
         assert isinstance(self.pretrained_model, ModifiedResNet)
-        self.layers_outputs: OrderedDict[str, Tensor] = OrderedDict()
 
+        # Freeze the backbone
+        for param in self.pretrained_model.parameters():
+            param.requires_grad = False
+
+        # Register hooks to get the output of all layers
+        self.layers_outputs: OrderedDict[str, Tensor] = OrderedDict()
         self.pretrained_model.layer1.register_forward_hook(self.hook_fn("layer1"))  # type: ignore
         self.pretrained_model.layer2.register_forward_hook(self.hook_fn("layer2"))  # type: ignore
         self.pretrained_model.layer3.register_forward_hook(self.hook_fn("layer3"))  # type: ignore
         self.pretrained_model.layer4.register_forward_hook(self.hook_fn("layer4"))  # type: ignore
 
+        # Project the output of each layer to the same dimensionality as the text features
+        cfg = Config.get_instance().visual_encoder  # type: ignore
+        resnet_resolution = cfg["resnet_resolution"]
+        self.layers_projections: List[nn.Sequential] = []
+        for _ in range(4):
+            resnet_resolution //= 2
+            layer_projection: nn.Sequential = nn.Sequential(
+                nn.AdaptiveAvgPool2d(resnet_resolution),
+                nn.Flatten(start_dim=1),
+                nn.LazyLinear(cfg["output_dim"], device=self.device),
+                nn.ReLU(),
+            )
+            self.layers_projections.append(layer_projection)
+
+    def forward(self, batch: Tensor) -> OrderedDict[str, Tensor]:
+        # Reset the dictionary
+        self.layers_outputs = OrderedDict()
+
+        with torch.no_grad():
+            out: Tensor = self.pretrained_model(batch)
+
+        for idx, (layer_name, layer_output) in enumerate(self.layers_outputs.items()):
+            self.layers_outputs[layer_name] = self.layers_projections[idx](layer_output)
+        self.layers_outputs["output"] = out
+
+        return self.layers_outputs
+
     def hook_fn(self, layer: str) -> Callable[[nn.Module, Tensor, Tensor], None]:
         def hook(module: nn.Module, input: Tensor, output: Tensor) -> None:
+            # print(f"Module: {[module for  module in module.modules()]}")
             self.layers_outputs[layer] = output
 
         return hook
-
-    @torch.no_grad()
-    def forward(self, batch: Tensor) -> OrderedDict[str, Any]:
-        self.layers_outputs = self.layers_outputs.fromkeys(
-            self.layers_outputs, torch.Tensor()
-        )
-
-        out: Tensor = self.pretrained_model(batch)
-        self.layers_outputs["output"] = out
-
-        for layer in self.layers_outputs.keys():
-            if layer != "output":
-                layer_features = self.layers_outputs[layer]
-                pooling_size: int = layer_features.shape[-1] // 2
-                pooling_layer = nn.AdaptiveAvgPool2d(pooling_size)
-                pooling_features: Tensor = pooling_layer(layer_features)
-
-                flat_features = torch.flatten(pooling_features, start_dim=1)
-                ll1 = nn.Linear(in_features=flat_features.shape[1], out_features=1024)
-                relu = nn.ReLU()
-                out_layer = ll1(flat_features)
-                out_layer = relu(out_layer)
-                self.layers_outputs[layer] = out_layer
-
-        return self.layers_outputs
 
 
 # Test
 if __name__ == "__main__":
     test = VisualEncoder()
-    layers: OrderedDict[str, Any] = test(torch.rand(1, 3, 224, 224))
+    layers: OrderedDict[str, Any] = test(torch.rand(3, 3, 224, 224))
     for layer in layers:
         print(f"{layer} with shape: {layers[layer].shape}")

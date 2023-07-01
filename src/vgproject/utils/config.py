@@ -6,7 +6,6 @@ import json
 class Singleton:
     def __init__(self, decorated_class: Any) -> None:
         self._decorated = decorated_class
-        print("Singleton init ", self._decorated)
 
     def get_instance(self) -> Any:
         """

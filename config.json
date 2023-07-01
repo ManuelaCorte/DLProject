@@ -1,17 +1,25 @@
 {
-  "dataset": {
-    "path": "../data/raw/refcocog/",
-    "split": "test"
-  },
+  "dataset_path": "../data/raw/refcocog/",
+  "epochs": 2,
+  "batch_size": 8,
+
   "model": {
-    "batch_size": 8,
     "emb_dim": 1024,
-    "epochs": 10,
     "lr": 0.0001,
-    "gamma": 0.8
+    "gamma": 0.8,
+    "attention_heads": 4,
+    "mlp_hidden_dim": 256
   },
+
+  "visual_encoder": {
+    "resnet_resolution": 56,
+    "resnet_channels": 256,
+    "output_dim": 1024
+  },
+
   "logging": {
     "path": "../runs/",
-    "save_model": true
+    "save_model": true,
+    "resume": true
   }
 }
