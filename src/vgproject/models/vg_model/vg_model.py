@@ -31,7 +31,9 @@ class VGModel(nn.Module):
         self.pooling: nn.AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(emb_dim).to(
             self.device
         )
-        self.reg_head: MLP = MLP(emb_dim, 4, cfg["mlp_hidden_dim"]).to(self.device)
+        self.reg_head: MLP = MLP(
+            emb_dim * 5, 4, hidden_dim_1=emb_dim, hidden_dim_2=cfg["mlp_hidden_dim"]
+        ).to(self.device)
 
     def forward(self, batch: List[BatchSample]) -> Tensor:
         captions: Tensor = torch.stack([sample.caption for sample in batch]).squeeze(1)
@@ -53,15 +55,16 @@ class VGModel(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim: int, output_dim: int, hidden_dim: int) -> None:
+    def __init__(
+        self, input_dim: int, output_dim: int, hidden_dim_1: int, hidden_dim_2: int
+    ) -> None:
         super().__init__()
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.hidden_dim = hidden_dim
         self.mlp = nn.Sequential(
-            nn.Linear(self.input_dim, self.hidden_dim),
+            nn.Linear(input_dim, hidden_dim_1),
             nn.ReLU(),
-            nn.Linear(self.hidden_dim, self.output_dim),
+            nn.Linear(hidden_dim_1, hidden_dim_2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim_2, output_dim),
         )
 
     def forward(self, x: Tensor) -> Tensor:

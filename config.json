@@ -20,6 +20,6 @@
   "logging": {
     "path": "../runs/",
     "save_model": true,
-    "resume": true
+    "resume": false
   }
 }
