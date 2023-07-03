@@ -1,6 +1,6 @@
 from typing import List, Tuple
 import torch
-from vgproject.data.data_types import BatchSample
+from vgproject.utils.data_types import BatchSample
 from torch import Tensor, device
 import numpy as np
 import torchvision.transforms as T

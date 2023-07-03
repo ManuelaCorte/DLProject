@@ -6,8 +6,7 @@ from torch import Tensor
 from vgproject.data.dataset import VGDataset
 from vgproject.utils.misc import custom_collate, transform_sample
 from vgproject.utils.config import Config
-from vgproject.utils.bbox_types import BboxType
-from vgproject.data.data_types import BatchSample, Split
+from vgproject.utils.data_types import BatchSample, Split, BboxType
 from .visual_encoder import VisualEncoder
 from .text_encoder import TextEncoder
 

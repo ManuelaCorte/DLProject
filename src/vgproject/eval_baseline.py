@@ -1,9 +1,8 @@
 from typing import Any, List
 from tqdm import tqdm
-from vgproject.utils.bbox_types import BboxType
 from vgproject.utils.misc import custom_collate
 from vgproject.data.dataset import VGDataset
-from vgproject.data.data_types import Result, Split
+from vgproject.utils.data_types import Result, Split, BboxType
 from vgproject.models.baseline import Baseline
 import torch
 from torch.utils.data import DataLoader

@@ -6,7 +6,7 @@ from ultralytics import YOLO
 from torchvision.transforms import ToPILImage, GaussianBlur
 from typing import List
 from ultralytics.yolo.engine.results import Results
-from vgproject.data.data_types import BatchSample, Result
+from vgproject.utils.data_types import BatchSample, Result
 from tqdm import tqdm
 from PIL import Image
 from torch import Tensor
@@ -31,7 +31,7 @@ class Baseline:
         images: List[Image.Image] = [ToPILImage()(sample.image) for sample in batch]
         batch_bbox_predictions: List[Results] = self.yolo(
             images, max_det=50, verbose=False, device=self.device
-        )
+        )  # type: ignore
         results: List[Result] = []
 
         for sample, image_bboxes in tqdm(
@@ -75,8 +75,8 @@ class Baseline:
         caption: torch.Tensor,
     ) -> torch.Tensor:
         # text = clip.tokenize(caption)
-        crops = [self.clip_preprocessor(ToPILImage()(crop)) for crop in crops]
-        blurs = [self.clip_preprocessor(ToPILImage()(blur)) for blur in blurs]
+        crops = [self.clip_preprocessor(ToPILImage()(crop)) for crop in crops]  # type: ignore
+        blurs = [self.clip_preprocessor(ToPILImage()(blur)) for blur in blurs]  # type: ignore
         images_crops: Tensor = torch.stack(tensors=crops).to(device=self.device)
         # print(images.shape)
         logits_per_image_crops, _ = self.clip_model(images_crops, caption)
