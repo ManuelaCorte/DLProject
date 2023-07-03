@@ -15,10 +15,12 @@ from .text_encoder import TextEncoder
 class VGModel(nn.Module):
     def __init__(
         self,
+        mlp_hidden_dim_1: int,
+        mlp_hidden_dim_2: int,
     ) -> None:
         super().__init__()
         cfg = Config.get_instance().model  # type: ignore
-        emb_dim = cfg["emb_dim"]
+        emb_dim: int = cfg["emb_dim"]
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.visual_backbone: VisualEncoder = VisualEncoder().to(self.device)
         self.text_encoder: TextEncoder = TextEncoder().to(self.device)
@@ -28,11 +30,8 @@ class VGModel(nn.Module):
             batch_first=True,
             device=self.device,
         )
-        self.pooling: nn.AdaptiveAvgPool1d = nn.AdaptiveAvgPool1d(emb_dim).to(
-            self.device
-        )
         self.reg_head: MLP = MLP(
-            emb_dim * 5, 4, hidden_dim_1=emb_dim, hidden_dim_2=cfg["mlp_hidden_dim"]
+            emb_dim * 5, 4, hidden_dim_1=mlp_hidden_dim_1, hidden_dim_2=mlp_hidden_dim_2
         ).to(self.device)
 
     def forward(self, batch: List[BatchSample]) -> Tensor:
@@ -50,8 +49,7 @@ class VGModel(nn.Module):
             attended_features.append(attention[0])
 
         aggregated_features: Tensor = torch.cat(attended_features, dim=1)
-        pooled_features: Tensor = self.pooling(aggregated_features)
-        return self.reg_head(pooled_features)
+        return self.reg_head(aggregated_features)
 
 
 class MLP(nn.Module):
@@ -85,7 +83,7 @@ if __name__ == "__main__":
         collate_fn=custom_collate,
         drop_last=True,
     )
-    test = VGModel()
+    test = VGModel(1024, 256)
     for batch, bbox in dataloader:
         out = test(batch)
         print(out)
