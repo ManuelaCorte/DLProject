@@ -32,13 +32,24 @@ def transform_sample(
     x_scale: float = target_size / x
     y_scale: float = target_size / y
 
+    # Same transformation as in the CLIP preprocess function
     trans = T.Compose(
         transforms=[
-            T.Resize((target_size, target_size)),
+            T.Resize(
+                size=target_size,
+                interpolation=T.InterpolationMode.BICUBIC,
+                max_size=None,
+                antialias="warn",
+            ),
             T.CenterCrop(target_size),
-            T.PILToTensor(),
+            T.ToTensor(),
+            T.Normalize(
+                mean=(0.48145466, 0.4578275, 0.40821073),
+                std=(0.26862954, 0.26130258, 0.27577711),
+            ),
         ]
     )
+
     image_tensor: Tensor = trans(image).to(device)  # type: ignore
     if image_tensor.shape[0] == 1:
         image_tensor = image_tensor.repeat(3, 1, 1)

@@ -169,6 +169,7 @@ def validate(
     device: torch.device,
 ) -> float:
     # As accuracy we take the average IoU
+    model.eval()
     accuracy_list: List[Tensor] = []
     for batch, bbox in tqdm(dataloader, desc="Batches"):
         # Move to gpu

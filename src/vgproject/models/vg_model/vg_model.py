@@ -71,19 +71,23 @@ class MLP(nn.Module):
 if __name__ == "__main__":
     cfg = Config.get_instance()  # type: ignore
     dataset = VGDataset(
-        dir_path=cfg.dataset["path"],
-        split=Split.TEST,
+        dir_path=cfg.dataset_path,
+        split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
         transform_image=transform_sample,
+        preprocessed=True,
     )
     dataloader = DataLoader(
         dataset,
-        batch_size=cfg.model["batch_size"],
+        batch_size=cfg.batch_size,
         collate_fn=custom_collate,
+        shuffle=True,
         drop_last=True,
     )
     test = VGModel(1024, 256)
     for batch, bbox in dataloader:
+        # print(batch[0].image, batch[0].caption)
         out = test(batch)
-        print(out)
+        print(out, bbox)
         print(out.shape, bbox.shape)
+        break
