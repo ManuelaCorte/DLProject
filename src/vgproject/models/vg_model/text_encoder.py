@@ -12,12 +12,12 @@ class TextEncoder(nn.Module):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.pretrained_model: CLIP = clip.load("RN50", device=self.device)[0]
+        self.pretrained_model.float()
 
     @torch.no_grad()
     def forward(self, tokenized_caption: Tensor) -> Tensor:
-        tokenized_caption = tokenized_caption.int()
-        out: Tensor = self.pretrained_model.encode_text(
-            tokenized_caption.to(torch.IntTensor())
+        out: Tensor = self.pretrained_model.encode_text(tokenized_caption).to(
+            self.device
         )
         return out
 

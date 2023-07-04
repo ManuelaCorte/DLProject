@@ -93,13 +93,15 @@ def objective(trial: Trial) -> float:
 
     for epoch in tqdm(range(start_epoch, cfg.epochs), desc="Epochs"):
         print("-------------------- Training --------------------------")
-        epoch_loss = train_one_epoch(train_dataloader, model, loss_func, optimizer)
+        epoch_loss = train_one_epoch(
+            train_dataloader, model, loss_func, optimizer, device
+        )
         losses_list.append(epoch_loss.cpu().item())
         lr_scheduler.step()
 
         # Evaluate on validation set for hyperparameter tuning
         print("-------------------- Validation ------------------------")
-        accuracy = validate(val_dataloader, model)
+        accuracy = validate(val_dataloader, model, device)
         accuracies_list.append(accuracy)
         trial.report(accuracy, epoch)
         print(f"Accuracy: {accuracy} at epoch {epoch}")
@@ -135,11 +137,16 @@ def train_one_epoch(
     model: VGModel,
     loss: Loss,
     optimizer: torch.optim.Optimizer,
+    device: torch.device,
 ) -> Tensor:
     # As loss we take smooth_l1 + GIoU
     epoch_loss_list: List[Tensor] = []
 
     for batch, bbox in tqdm(dataloader, desc="Batches"):
+        # Move to gpu
+        for sample in batch:
+            sample.to(device)
+
         # Forward pass
         out: Tensor = model(batch)
 
@@ -157,11 +164,17 @@ def train_one_epoch(
 
 @torch.no_grad()
 def validate(
-    dataloader: DataLoader[Tuple[BatchSample, Tensor]], model: VGModel
+    dataloader: DataLoader[Tuple[BatchSample, Tensor]],
+    model: VGModel,
+    device: torch.device,
 ) -> float:
     # As accuracy we take the average IoU
     accuracy_list: List[Tensor] = []
     for batch, bbox in tqdm(dataloader, desc="Batches"):
+        # Move to gpu
+        for sample in batch:
+            sample.to(device)
+
         # Forward pass
         out: Tensor = model(batch)
 
@@ -172,7 +185,7 @@ def validate(
 
 def main() -> None:
     # optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
-    study_name = "test"
+    study_name = "train.db"
     study = optuna.create_study(
         study_name=study_name,
         storage=f"sqlite:///{study_name}",

@@ -17,6 +17,7 @@ class VisualEncoder(nn.Module):
         self.pretrained_model: ModifiedResNet = clip.load("RN50", device=self.device)[
             0
         ].visual  # type: ignore
+        self.pretrained_model.float()
         assert isinstance(self.pretrained_model, ModifiedResNet)
 
         # Freeze the backbone
@@ -32,14 +33,18 @@ class VisualEncoder(nn.Module):
 
         # Project the output of each layer to the same dimensionality as the text features
         cfg = Config.get_instance().visual_encoder  # type: ignore
-        resnet_resolution = cfg["resnet_resolution"]
+        resnet_resolution: int = cfg["resnet_resolution"]
+        resnet_channels: int = cfg["resnet_channels"]
+
         self.layers_projections: List[nn.Sequential] = []
         for _ in range(4):
             resnet_resolution //= 2
+            in_features: int = resnet_channels * resnet_resolution * resnet_resolution
+            resnet_channels *= 2
             layer_projection: nn.Sequential = nn.Sequential(
                 nn.AdaptiveAvgPool2d(resnet_resolution),
                 nn.Flatten(start_dim=1),
-                nn.LazyLinear(cfg["output_dim"], device=self.device),
+                nn.Linear(in_features, cfg["output_dim"], device=self.device),
                 nn.ReLU(),
             )
             self.layers_projections.append(layer_projection)

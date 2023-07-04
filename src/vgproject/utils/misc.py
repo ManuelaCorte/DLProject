@@ -25,10 +25,12 @@ def transform_sample(
     target_size: int = 224,
     device: device = torch.device("cpu"),
 ) -> Tuple[Tensor, Tensor]:
+    x: int
+    y: int
     x, y = image.size[0], image.size[1]
 
-    x_scale = target_size / x
-    y_scale = target_size / y
+    x_scale: float = target_size / x
+    y_scale: float = target_size / y
 
     trans = T.Compose(
         transforms=[
@@ -38,6 +40,8 @@ def transform_sample(
         ]
     )
     image_tensor: Tensor = trans(image).to(device)  # type: ignore
+    if image_tensor.shape[0] == 1:
+        image_tensor = image_tensor.repeat(3, 1, 1)
 
     xmin, ymin, xmax, ymax = box.squeeze(0)
 
