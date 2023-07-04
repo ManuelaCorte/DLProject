@@ -23,17 +23,21 @@ def objective(trial: Trial) -> float:
     cfg = Config.get_instance()  # type: ignore
     train_dataset: VGDataset = VGDataset(
         dir_path=cfg.dataset_path,
-        split=Split.TEST,
+        split=Split.TRAIN,
         output_bbox_type=BboxType.XYXY,
         transform_image=transform_sample,
+        preprocessed=True,
     )
+    print("Train dataset created. Dataset length ", len(train_dataset))
 
     val_dataset: VGDataset = VGDataset(
         dir_path=cfg.dataset_path,
-        split=Split.TEST,
+        split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
         transform_image=transform_sample,
+        preprocessed=True,
     )
+    print("Validation dataset created. Dataset length: ", len(val_dataset))
 
     batch_size = trial.suggest_int(
         "batch_size",

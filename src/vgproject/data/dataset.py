@@ -3,6 +3,7 @@ from torchvision.ops import box_convert
 import torch
 import pickle
 import json
+from vgproject.data.process import preprocess
 from vgproject.utils.data_types import BboxType, Sample, Split, BatchSample
 from typing import Any, Dict, List, Tuple
 from torchvision.io import read_image
@@ -19,6 +20,8 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         split: Split,
         output_bbox_type: BboxType,
         transform_image: Any = None,
+        preprocessed: bool = False,
+        preprocessed_path: str = "../data/processed/",
     ) -> None:
         super().__init__()
         self.dir_path: str = dir_path
@@ -28,7 +31,14 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         self.device: device = torch.device(
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
-        self.samples: List[Sample] = self.get_samples()
+        if preprocessed:
+            preprocess(dir_path, preprocessed_path)
+            with open(
+                preprocessed_path + f"{self.split.value}_samples.p", "rb"
+            ) as samples:
+                self.samples: List[Sample] = pickle.load(samples)
+        else:
+            self.samples: List[Sample] = self.get_samples()  # type: ignore
 
     def __len__(self) -> int:
         return len(self.samples)
