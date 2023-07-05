@@ -74,7 +74,7 @@ if __name__ == "__main__":
         dir_path=cfg.dataset_path,
         split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
-        transform_image=transform_sample,
+        transform_sample=transform_sample,
         preprocessed=True,
     )
     dataloader = DataLoader(

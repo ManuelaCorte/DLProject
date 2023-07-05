@@ -25,7 +25,7 @@ def objective(trial: Trial) -> float:
         dir_path=cfg.dataset_path,
         split=Split.TRAIN,
         output_bbox_type=BboxType.XYXY,
-        transform_image=transform_sample,
+        transform_sample=transform_sample,
         preprocessed=True,
     )
     print("Train dataset created. Dataset length ", len(train_dataset))
@@ -34,7 +34,7 @@ def objective(trial: Trial) -> float:
         dir_path=cfg.dataset_path,
         split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
-        transform_image=transform_sample,
+        transform_sample=transform_sample,
         preprocessed=True,
     )
     print("Validation dataset created. Dataset length: ", len(val_dataset))
@@ -96,7 +96,7 @@ def objective(trial: Trial) -> float:
         epoch_loss = train_one_epoch(
             train_dataloader, model, loss_func, optimizer, device
         )
-        losses_list.append(epoch_loss.cpu().item())
+        losses_list.append(epoch_loss.item())
         lr_scheduler.step()
 
         # Evaluate on validation set for hyperparameter tuning
@@ -181,7 +181,7 @@ def validate(
 
         accuracy_list.append(torch.diagonal(box_iou(out, bbox)).mean())
 
-    return torch.stack(accuracy_list).mean().cpu().item()
+    return torch.stack(accuracy_list).mean().item()
 
 
 def main() -> None:

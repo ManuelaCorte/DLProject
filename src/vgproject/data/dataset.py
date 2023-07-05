@@ -19,7 +19,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         dir_path: str,
         split: Split,
         output_bbox_type: BboxType,
-        transform_image: Any = None,
+        transform_sample: Any = None,
         preprocessed: bool = False,
         preprocessed_path: str = "../data/processed/",
     ) -> None:
@@ -27,16 +27,18 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         self.dir_path: str = dir_path
         self.split: Split = split
         self.output_bbox_type: BboxType = output_bbox_type
-        self.transform_image: Any = transform_image
+        self.transform_sample: Any = transform_sample
         self.device: device = torch.device(
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
         if preprocessed:
-            preprocess(dir_path, preprocessed_path)
+            preprocess(in_path=dir_path, out_path=preprocessed_path)
             with open(
-                preprocessed_path + f"{self.split.value}_samples.p", "rb"
+                preprocessed_path + f"{self.split.value}_samples.json", "rb"
             ) as samples:
-                self.samples: List[Sample] = pickle.load(samples)
+                self.samples: List[Sample] = json.load(
+                    samples, object_hook=Sample.fromJSON
+                )
         else:
             self.samples: List[Sample] = self.get_samples()  # type: ignore
 
@@ -44,16 +46,15 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
-        caption: Tensor = clip.tokenize(self.samples[ref_id].caption)
-
-        if self.transform_image is not None:
-            image_trans, bbox_trans = self.transform_image(
+        caption: Tensor = clip.tokenize(self.samples[ref_id].caption)  # type: ignore
+        if self.transform_sample is not None:
+            image_trans, bbox_trans = self.transform_sample(
                 Image.open(self.samples[ref_id].image_path),
                 self.samples[ref_id].bounding_box,
                 device=self.device,
             )
             sample_trans: BatchSample = BatchSample(image_trans, caption).to(
-                self.device
+                device=self.device
             )
             return sample_trans, bbox_trans
         else:

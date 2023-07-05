@@ -64,24 +64,43 @@ def get_bounding_box(ann_id: int, instances: Dict[str, Any]) -> Tensor:
 # If the files already exist, don't preprocess again
 def preprocess(in_path: str, out_path: str) -> None:
     if (
-        os.path.exists(f"{out_path}train_samples.p")
-        and os.path.exists(f"{out_path}val_samples.p")
-        and os.path.exists(f"{out_path}test_samples.p")
+        os.path.exists(f"{out_path}train_samples.json")
+        and os.path.exists(f"{out_path}val_samples.json")
+        and os.path.exists(f"{out_path}test_samples.json")
     ):
         return
     train_samples, val_samples, test_samples = get_samples(in_path)
 
-    pickle.dump(train_samples, open(f"{out_path}train_samples.p", "wb"))
+    json.dump(
+        train_samples,
+        open(f"{out_path}train_samples.json", "w"),
+        default=Sample.as_dict,
+    )
 
-    pickle.dump(val_samples, open(f"{out_path}val_samples.p", "wb"))
+    json.dump(
+        val_samples,
+        open(f"{out_path}val_samples.json", "w"),
+        default=Sample.as_dict,
+    )
 
-    pickle.dump(test_samples, open(f"{out_path}test_samples.p", "wb"))
+    json.dump(
+        test_samples,
+        open(f"{out_path}test_samples.json", "w"),
+        default=Sample.as_dict,
+    )
 
 
 if __name__ == "__main__":
     preprocess("../data/raw/refcocog/", "../data/processed/")
 
-    train: List[Sample] = pickle.load(open("../data/processed/train_samples.p", "rb"))
-    val: List[Sample] = pickle.load(open("../data/processed/val_samples.p", "rb"))
-    test: List[Sample] = pickle.load(open("../data/processed/test_samples.p", "rb"))
+    train: List[Sample] = json.load(
+        open("../data/processed/train_samples.json", "r"), object_hook=Sample.fromJSON
+    )
+    val: List[Sample] = json.load(
+        open("../data/processed/val_samples.json", "r"), object_hook=Sample.fromJSON
+    )
+    test: List[Sample] = json.load(
+        open("../data/processed/test_samples.json", "r"), object_hook=Sample.fromJSON
+    )
     print(len(train), len(val), len(test))
+    print(train[0].image_path, train[0].caption, train[0].bounding_box.shape)

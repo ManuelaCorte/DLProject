@@ -5,11 +5,22 @@ from typing import Any
 from torch import Tensor, device
 
 
-@dataclass(frozen=True)
 class Sample:
-    image_path: str
-    caption: str
-    bounding_box: Tensor
+    def __init__(self, image_path: str, caption: str, bounding_box: Tensor) -> None:
+        self.image_path = image_path
+        self.caption = caption
+        self.bounding_box = bounding_box
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "image_path": self.image_path,
+            "caption": self.caption,
+            "bounding_box": self.bounding_box.tolist(),
+        }
+
+    @staticmethod
+    def fromJSON(json: dict[str, Any]) -> Any:
+        return Sample(json["image_path"], json["caption"], Tensor(json["bounding_box"]))
 
 
 class BatchSample:
