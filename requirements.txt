@@ -56,7 +56,7 @@ google-auth==2.21.0
 googleapis-common-protos==1.59.1
 gpustat==1.1
 greenlet==2.0.2
-grpcio==1.51.3
+grpcio==1.53.0
 h11==0.14.0
 idna==3.4
 imagecodecs==2023.1.23
