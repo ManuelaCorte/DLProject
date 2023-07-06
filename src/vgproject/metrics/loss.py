@@ -17,4 +17,4 @@ class Loss:
         return self.loss
 
     def to_float(self) -> float:
-        return self.loss.detach().cpu().item()
+        return self.loss.item()

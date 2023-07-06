@@ -1,9 +1,13 @@
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 import torch
-from vgproject.utils.data_types import BatchSample
+from .data_types import BatchSample
+
 from torch import Tensor, device
-import torchvision.transforms as T
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 from PIL import Image
+import numpy as np
+import cv2
 
 
 def custom_collate(
@@ -22,43 +26,56 @@ def custom_collate(
 def transform_sample(
     image: Image.Image,
     box: Tensor,
+    augment: bool,
+    device: device,
     target_size: int = 224,
-    device: device = torch.device("cpu"),
 ) -> Tuple[Tensor, Tensor]:
-    x: int
-    y: int
-    x, y = image.size[0], image.size[1]
-
     # Same transformation as in the CLIP preprocess function
-    trans = T.Compose(
-        transforms=[
-            T.Resize(
-                size=(target_size, target_size),
-                interpolation=T.InterpolationMode.BICUBIC,
-                max_size=None,
-                antialias="warn",
-            ),
-            T.CenterCrop(target_size),
-            T.ToTensor(),
-        ]
-    )
+    if augment:
+        trans = A.Compose(
+            transforms=[
+                A.Resize(target_size, target_size, interpolation=cv2.INTER_CUBIC, p=1),
+                A.CenterCrop(
+                    target_size,
+                    target_size,
+                    always_apply=True,
+                ),
+                A.Normalize(
+                    mean=(0.48145466, 0.4578275, 0.40821073),
+                    std=(0.26862954, 0.26130258, 0.27577711),
+                    max_pixel_value=255.0,
+                ),
+                ToTensorV2(),
+            ],
+            bbox_params=A.BboxParams(format="pascal_voc", label_fields=[]),
+        )
+    else:
+        trans = A.Compose(
+            transforms=[
+                A.Resize(target_size, target_size, interpolation=cv2.INTER_CUBIC, p=1),
+                A.CenterCrop(
+                    target_size,
+                    target_size,
+                    always_apply=True,
+                ),
+                A.GaussianBlur(p=0.5),
+                A.Normalize(
+                    mean=(0.48145466, 0.4578275, 0.40821073),
+                    std=(0.26862954, 0.26130258, 0.27577711),
+                    max_pixel_value=255.0,
+                ),
+                ToTensorV2(),
+            ],
+            bbox_params=A.BboxParams(format="pascal_voc"),
+        )
 
-    image_tensor: Tensor = trans(image).to(device)  # type: ignore
+    transformed_sample: Dict[str, Any] = trans(
+        image=np.array(image), bboxes=box.tolist()
+    )
+    image_tensor: Tensor = transformed_sample["image"]
+
     if image_tensor.shape[0] == 1:
         image_tensor = image_tensor.repeat(3, 1, 1)
 
-    image_tensor = T.Normalize(
-        mean=(0.48145466, 0.4578275, 0.40821073),
-        std=(0.26862954, 0.26130258, 0.27577711),
-    )(image_tensor)
-
-    xmin, ymin, xmax, ymax = box.squeeze(0)
-
-    xmin_norm: float = xmin.item() / x
-    ymin_norm: float = ymin.item() / y
-    xmax_norm: float = xmax.item() / x
-    ymax_norm: float = ymax.item() / y
-    bbox_tensor: Tensor = torch.tensor(
-        [xmin_norm, ymin_norm, xmax_norm, ymax_norm], device=device
-    )
+    bbox_tensor: Tensor = torch.tensor(transformed_sample["bboxes"][0])
     return image_tensor, bbox_tensor

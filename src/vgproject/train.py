@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 from vgproject.data.dataset import VGDataset
 from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.data_types import Split, BatchSample, BboxType
-from vgproject.utils.misc import custom_collate, transform_sample
+from vgproject.utils.misc import custom_collate
 from vgproject.utils.config import Config
 from vgproject.metrics.loss import Loss
 
@@ -25,7 +25,7 @@ def objective(trial: Trial) -> float:
         dir_path=cfg.dataset_path,
         split=Split.TRAIN,
         output_bbox_type=BboxType.XYXY,
-        transform_sample=transform_sample,
+        augment=True,
         preprocessed=True,
     )
     print("Train dataset created. Dataset length ", len(train_dataset))
@@ -34,7 +34,7 @@ def objective(trial: Trial) -> float:
         dir_path=cfg.dataset_path,
         split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
-        transform_sample=transform_sample,
+        augment=False,
         preprocessed=True,
     )
     print("Validation dataset created. Dataset length: ", len(val_dataset))

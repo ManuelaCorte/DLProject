@@ -32,6 +32,9 @@ dependencies:
   - types-tqdm
   - types-pillow
   - types-setuptools
+  - optuna
+  - plotly
+  - albumentations
   - pip:
       - git+https://github.com/openai/CLIP.git
       - ultralytics

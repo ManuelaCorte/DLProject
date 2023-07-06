@@ -1,12 +1,13 @@
 from torch.utils.data import Dataset
 from torchvision.ops import box_convert
+from torchvision.io import read_image
 import torch
 import pickle
 import json
 from vgproject.data.process import preprocess
 from vgproject.utils.data_types import BboxType, Sample, Split, BatchSample
+from vgproject.utils.misc import transform_sample
 from typing import Any, Dict, List, Tuple
-from torchvision.io import read_image
 from torch import Tensor, tensor, device
 from PIL import Image
 from clip import clip
@@ -19,7 +20,8 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         dir_path: str,
         split: Split,
         output_bbox_type: BboxType,
-        transform_sample: Any = None,
+        augment: bool,
+        transform: bool = True,
         preprocessed: bool = False,
         preprocessed_path: str = "../data/processed/",
     ) -> None:
@@ -27,12 +29,13 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         self.dir_path: str = dir_path
         self.split: Split = split
         self.output_bbox_type: BboxType = output_bbox_type
-        self.transform_sample: Any = transform_sample
+        self.augment: bool = augment
+        self.transform: bool = transform
         self.device: device = torch.device(
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
         if preprocessed:
-            preprocess(in_path=dir_path, out_path=preprocessed_path)
+            preprocess(dir_path, preprocessed_path)
             with open(
                 preprocessed_path + f"{self.split.value}_samples.json", "rb"
             ) as samples:
@@ -47,21 +50,17 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
         caption: Tensor = clip.tokenize(self.samples[ref_id].caption)  # type: ignore
-        if self.transform_sample is not None:
-            image_trans, bbox_trans = self.transform_sample(
+        if self.transform:
+            image, bbox = transform_sample(
                 Image.open(self.samples[ref_id].image_path),
                 self.samples[ref_id].bounding_box,
+                self.augment,
                 device=self.device,
             )
-            sample_trans: BatchSample = BatchSample(image_trans, caption).to(
-                device=self.device
-            )
-            return sample_trans, bbox_trans
         else:
-            image: Tensor = read_image(self.samples[ref_id].image_path)
-            bbox: Tensor = self.samples[ref_id].bounding_box.to(device=self.device)
-            sample: BatchSample = BatchSample(image, caption).to(self.device)
-            return sample, bbox
+            image = read_image(self.samples[ref_id].image_path)
+            bbox = torch.tensor([self.samples[ref_id].bounding_box])
+        return BatchSample(image, caption), bbox
 
     def get_samples(self) -> List[Sample]:
         with open(self.dir_path + "annotations/instances.json", "r") as inst, open(

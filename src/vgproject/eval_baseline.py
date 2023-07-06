@@ -18,6 +18,8 @@ test_data = VGDataset(
     dir_path=cfg.dataset_path,
     split=Split.TEST,
     output_bbox_type=BboxType.XYXY,
+    augment=False,
+    transform=False,
     preprocessed=True,
 )
 print("Dataset length: ", len(test_data))

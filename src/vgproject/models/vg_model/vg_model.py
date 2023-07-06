@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch import Tensor
 from vgproject.data.dataset import VGDataset
-from vgproject.utils.misc import custom_collate, transform_sample
+from vgproject.utils.misc import custom_collate
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, Split, BboxType
 from .visual_encoder import VisualEncoder
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         dir_path=cfg.dataset_path,
         split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
-        transform_sample=transform_sample,
+        augment=True,
         preprocessed=True,
     )
     dataloader = DataLoader(
