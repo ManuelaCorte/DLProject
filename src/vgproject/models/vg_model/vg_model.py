@@ -39,10 +39,12 @@ class VGModel(nn.Module):
         ).to(self.device)
 
     def forward(self, batch: List[BatchSample]) -> Tensor:
-        captions: Tensor = torch.stack([sample.caption for sample in batch]).squeeze(1)
+        captions: Tensor = (
+            torch.stack([sample.caption for sample in batch]).squeeze(1).to(self.device)
+        )
         text_features: Tensor = self.text_encoder(captions).unsqueeze(1)
 
-        images: Tensor = torch.stack([sample.image for sample in batch])
+        images: Tensor = torch.stack([sample.image for sample in batch]).to(self.device)
         visual_features: OrderedDict[str, Tensor] = self.visual_backbone(images)
 
         attended_features: List[Tensor] = []

@@ -30,6 +30,9 @@ def transform_sample(
     device: device,
     target_size: int = 224,
 ) -> Tuple[Tensor, Tensor]:
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
     # Same transformation as in the CLIP preprocess function
     if augment:
         trans = A.Compose(
@@ -78,9 +81,11 @@ def transform_sample(
     )
     image_tensor: Tensor = transformed_sample["image"]
 
-    if image_tensor.shape[0] == 1:
-        image_tensor = image_tensor.repeat(3, 1, 1)
+    # if image_tensor.shape[0] == 1:
+    #     image_tensor = image_tensor.repeat(3, 1, 1)
 
-    bbox_tensor: Tensor = torch.tensor(transformed_sample["bboxes"][0]) / target_size
-    print(bbox_tensor)
-    return image_tensor, bbox_tensor
+    bbox_tensor: Tensor = (
+        torch.tensor(transformed_sample["bboxes"][0], requires_grad=True) / target_size
+    )
+    # print(bbox_tensor)
+    return image_tensor, bbox_tensor.to(torch.float32)

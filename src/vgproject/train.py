@@ -145,7 +145,8 @@ def train_one_epoch(
     for batch, bbox in tqdm(dataloader, desc="Batches"):
         # Move to gpu
         for sample in batch:
-            sample.to(device)
+            sample = sample.to(device)
+        bbox = bbox.to(device)
 
         # Forward pass
         out: Tensor = model(batch)
@@ -175,6 +176,7 @@ def validate(
         # Move to gpu
         for sample in batch:
             sample.to(device)
+        bbox = bbox.to(device)
 
         # Forward pass
         out: Tensor = model(batch)
