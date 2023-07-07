@@ -44,7 +44,12 @@ def transform_sample(
                     mean=(0.48145466, 0.4578275, 0.40821073),
                     std=(0.26862954, 0.26130258, 0.27577711),
                     max_pixel_value=255.0,
+                    always_apply=True,
                 ),
+                A.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0),
+                A.GaussianBlur(p=1),
+                A.PixelDropout(dropout_prob=0.02),
+                A.Rotate(limit=20),
                 ToTensorV2(),
             ],
             bbox_params=A.BboxParams(format="pascal_voc", label_fields=[]),
@@ -58,7 +63,6 @@ def transform_sample(
                     target_size,
                     always_apply=True,
                 ),
-                A.GaussianBlur(p=0.5),
                 A.Normalize(
                     mean=(0.48145466, 0.4578275, 0.40821073),
                     std=(0.26862954, 0.26130258, 0.27577711),
@@ -66,7 +70,7 @@ def transform_sample(
                 ),
                 ToTensorV2(),
             ],
-            bbox_params=A.BboxParams(format="pascal_voc"),
+            bbox_params=A.BboxParams(format="pascal_voc", label_fields=[]),
         )
 
     transformed_sample: Dict[str, Any] = trans(
@@ -77,5 +81,6 @@ def transform_sample(
     if image_tensor.shape[0] == 1:
         image_tensor = image_tensor.repeat(3, 1, 1)
 
-    bbox_tensor: Tensor = torch.tensor(transformed_sample["bboxes"][0])
+    bbox_tensor: Tensor = torch.tensor(transformed_sample["bboxes"][0]) / target_size
+    print(bbox_tensor)
     return image_tensor, bbox_tensor

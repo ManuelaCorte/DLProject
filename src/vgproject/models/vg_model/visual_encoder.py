@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, OrderedDict
+from typing import Any, Callable, OrderedDict
 from clip.model import ModifiedResNet
 import clip
 import torch
@@ -36,7 +36,7 @@ class VisualEncoder(nn.Module):
         resnet_resolution: int = cfg["resnet_resolution"]
         resnet_channels: int = cfg["resnet_channels"]
 
-        self.layers_projections: List[nn.Sequential] = []
+        self.layers_projections = nn.ModuleList()
         for _ in range(4):
             resnet_resolution //= 2
             in_features: int = resnet_channels * resnet_resolution * resnet_resolution
@@ -45,7 +45,10 @@ class VisualEncoder(nn.Module):
                 nn.AdaptiveAvgPool2d(resnet_resolution),
                 nn.Flatten(start_dim=1),
                 nn.Linear(in_features, cfg["output_dim"], device=self.device),
-                nn.ReLU(),
+                # nn.LayerNorm(
+                #     cfg["output_dim"], eps=1e-3, device=self.device
+                # ),
+                # nn.ReLU(),
             )
             self.layers_projections.append(layer_projection)
 
@@ -53,11 +56,12 @@ class VisualEncoder(nn.Module):
         # Reset the dictionary
         self.layers_outputs = OrderedDict()
 
-        with torch.no_grad():
-            out: Tensor = self.pretrained_model(batch)
+        out: Tensor = self.pretrained_model(batch)
+        # .unsqueeze(1)
 
         for idx, (layer_name, layer_output) in enumerate(self.layers_outputs.items()):
             self.layers_outputs[layer_name] = self.layers_projections[idx](layer_output)
+            # .unsqueeze(1)
         self.layers_outputs["output"] = out
 
         return self.layers_outputs
@@ -65,7 +69,7 @@ class VisualEncoder(nn.Module):
     def hook_fn(self, layer: str) -> Callable[[nn.Module, Tensor, Tensor], None]:
         def hook(module: nn.Module, input: Tensor, output: Tensor) -> None:
             # print(f"Module: {[module for  module in module.modules()]}")
-            self.layers_outputs[layer] = output
+            self.layers_outputs[layer] = output.requires_grad_(True)
 
         return hook
 
@@ -75,4 +79,4 @@ if __name__ == "__main__":
     test = VisualEncoder()
     layers: OrderedDict[str, Any] = test(torch.rand(3, 3, 224, 224))
     for layer in layers:
-        print(f"{layer} with shape: {layers[layer].shape}")
+        print(f"{layer}, {layers[layer]} with shape: {layers[layer].shape}")

@@ -97,3 +97,5 @@ data/processed/
 # Pythorch models
 *.pth
 *.pt
+
+runs/

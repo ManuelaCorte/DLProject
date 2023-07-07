@@ -5,7 +5,7 @@ from torchvision.ops import generalized_box_iou_loss
 
 class Loss:
     def __init__(self, l: float) -> None:
-        self.l1_loss = nn.L1Loss(reduction="mean")
+        self.l1_loss = nn.SmoothL1Loss(reduction="mean")
         self.giou_loss = generalized_box_iou_loss
         self.l: float = l
         self.loss: Tensor

@@ -23,11 +23,16 @@ class VGModel(nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.visual_backbone: VisualEncoder = VisualEncoder().to(self.device)
         self.text_encoder: TextEncoder = TextEncoder().to(self.device)
-        self.attention_layer = nn.MultiheadAttention(
-            embed_dim=emb_dim,
-            num_heads=4,
-            batch_first=True,
-            device=self.device,
+        self.attention_layers: nn.ModuleList = nn.ModuleList(
+            [
+                nn.MultiheadAttention(
+                    embed_dim=emb_dim,
+                    num_heads=4,
+                    batch_first=True,
+                    device=self.device,
+                )
+                for _ in range(5)
+            ]
         )
         self.reg_head: MLP = MLP(
             emb_dim * 5, 4, hidden_dim_1=mlp_hidden_dim_1, hidden_dim_2=mlp_hidden_dim_2
@@ -35,19 +40,22 @@ class VGModel(nn.Module):
 
     def forward(self, batch: List[BatchSample]) -> Tensor:
         captions: Tensor = torch.stack([sample.caption for sample in batch]).squeeze(1)
-        text_features: Tensor = self.text_encoder(captions)
+        text_features: Tensor = self.text_encoder(captions).unsqueeze(1)
 
         images: Tensor = torch.stack([sample.image for sample in batch])
         visual_features: OrderedDict[str, Tensor] = self.visual_backbone(images)
 
         attended_features: List[Tensor] = []
-        for feature in visual_features.values():
-            attention: Tensor = self.attention_layer(
-                feature, text_features, text_features
-            )
-            attended_features.append(attention[0])
+        for i, visual_feature in enumerate(visual_features.values()):
+            vis_feature: Tensor = visual_feature.unsqueeze(1)
+            # print(vis_feature.shape, text_features.shape)
+            attended_feature: Tensor = self.attention_layers[i](
+                query=text_features, key=vis_feature, value=vis_feature
+            )[0].squeeze(1)
+            attended_features.append(attended_feature)
 
         aggregated_features: Tensor = torch.cat(attended_features, dim=1)
+
         return self.reg_head(aggregated_features)
 
 
@@ -79,14 +87,13 @@ if __name__ == "__main__":
     )
     dataloader = DataLoader(
         dataset,
-        batch_size=cfg.batch_size,
+        batch_size=3,
         collate_fn=custom_collate,
         shuffle=True,
         drop_last=True,
     )
     test = VGModel(1024, 256)
     for batch, bbox in dataloader:
-        # print(batch[0].image, batch[0].caption)
         out = test(batch)
         print(out, bbox)
         print(out.shape, bbox.shape)

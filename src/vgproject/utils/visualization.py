@@ -2,14 +2,16 @@ from typing import List
 from matplotlib import pyplot as plt
 
 from vgproject.data.dataset import VGDataset
-from .data_types import BboxType, Sample, Split
+from vgproject.models.vg_model.vg_model import VGModel
+from vgproject.utils.misc import custom_collate
+from .data_types import BatchSample, BboxType, Sample, Split
 from .config import Config
+from torch.utils.data import DataLoader
 from torchvision.utils import draw_bounding_boxes
 from torchvision.io import read_image
 from torch import Tensor
 import torch
-
-# import albumentations as A
+from torchviz import make_dot  # type: ignore
 
 
 def visualize(samples: List[Sample], predictions: Tensor) -> None:
@@ -51,14 +53,28 @@ def unnormalize_bbox(image: Tensor, bbox: Tensor) -> Tensor:
     return torch.tensor([xmin_unnorm, ymin_unnorm, xmax_unnorm, ymax_unnorm])
 
 
+def visualize_network(model: torch.nn.Module, batch: List[BatchSample]) -> None:
+    output: Tensor = model(batch)
+    make_dot(
+        output.mean(), params=dict(model.named_parameters()), show_attrs=True
+    ).render("model_graph", directory="../runs", format="png")
+
+
 if __name__ == "__main__":
     cfg = Config.get_instance()  # type: ignore
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.TEST,
         output_bbox_type=BboxType.XYXY,
-        augment=False,
+        augment=True,
         preprocessed=True,
+    )
+    dataloader = DataLoader(
+        dataset,
+        batch_size=cfg.batch_size,
+        collate_fn=custom_collate,
+        shuffle=True,
+        drop_last=True,
     )
     samples = dataset.samples[:6]
     print(samples[0].bounding_box, samples[0].bounding_box.shape)
@@ -66,3 +82,10 @@ if __name__ == "__main__":
         [sample.bounding_box for sample in dataset.samples[14:20]]
     )
     visualize(samples, predictions)
+
+    test = VGModel(1024, 256)
+    for batch, bbox in dataloader:
+        # print(batch[0].image, batch[0].caption)
+        out = test(batch)
+        visualize_network(test, batch)
+        break
