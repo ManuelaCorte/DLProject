@@ -11,9 +11,10 @@ class Loss:
         self.loss: Tensor
 
     def compute(self, out: Tensor, bbox: Tensor) -> Tensor:
-        self.loss = self.giou_loss(out, bbox, reduction="mean") + self.l * self.l1_loss(
-            out, bbox
-        )
+        # self.loss = self.giou_loss(out, bbox, reduction="mean") + self.l * self.l1_loss(
+        #     out, bbox
+        # )
+        self.loss = self.l1_loss(out, bbox)
         return self.loss
 
     def to_float(self) -> float:

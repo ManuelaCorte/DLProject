@@ -49,6 +49,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
+        # extended_caption: str = f"find the region that corresponds to the description {self.samples[ref_id].caption}"
         caption: Tensor = clip.tokenize(self.samples[ref_id].caption)  # type: ignore
         if self.transform:
             image, bbox = transform_sample(

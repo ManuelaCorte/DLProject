@@ -1,5 +1,6 @@
 import os
 from typing import Any, Dict, List, Tuple
+import gc
 
 from vgproject.data.dataset import VGDataset
 from vgproject.models.vg_model.vg_model import VGModel
@@ -127,7 +128,8 @@ def objective(trial: Trial) -> float:
                 f=f"{cfg.logging['path']}model.pth",
             )
 
-        torch.clear_autocast_cache()
+        torch.cuda.empty_cache()
+        gc.collect()
 
     return sum(accuracies_list) / len(accuracies_list)
 

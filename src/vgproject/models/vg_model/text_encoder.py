@@ -18,6 +18,7 @@ class TextEncoder(nn.Module):
         for param in self.pretrained_model.parameters():
             param.requires_grad = False
 
+    @torch.no_grad()
     def forward(self, tokenized_caption: Tensor) -> Tensor:
         out: Tensor = self.pretrained_model.encode_text(tokenized_caption).to(
             self.device

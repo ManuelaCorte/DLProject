@@ -79,13 +79,9 @@ def transform_sample(
     transformed_sample: Dict[str, Any] = trans(
         image=np.array(image), bboxes=box.tolist()
     )
-    image_tensor: Tensor = transformed_sample["image"]
-
-    # if image_tensor.shape[0] == 1:
-    #     image_tensor = image_tensor.repeat(3, 1, 1)
 
     bbox_tensor: Tensor = (
         torch.tensor(transformed_sample["bboxes"][0], requires_grad=True) / target_size
     )
     # print(bbox_tensor)
-    return image_tensor, bbox_tensor.to(torch.float32)
+    return transformed_sample["image"], bbox_tensor.to(torch.float32)

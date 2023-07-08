@@ -52,6 +52,7 @@ class VisualEncoder(nn.Module):
             )
             self.layers_projections.append(layer_projection)
 
+    @torch.no_grad()
     def forward(self, batch: Tensor) -> OrderedDict[str, Tensor]:
         # Reset the dictionary
         self.layers_outputs = OrderedDict()
