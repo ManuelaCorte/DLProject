@@ -1,15 +1,16 @@
 from typing import Any, Dict, List, Tuple
+
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from vgproject.data.dataset import VGDataset
-from vgproject.models.vg_model.vg_model import VGModel
-from vgproject.utils.data_types import Split, BatchSample, BboxType
 from vgproject.metrics.loss import Loss
-from vgproject.utils.misc import custom_collate
+from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.config import Config
+from vgproject.utils.data_types import BatchSample, BboxType, Split
+from vgproject.utils.misc import custom_collate
 
 
 @torch.no_grad()

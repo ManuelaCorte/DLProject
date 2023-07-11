@@ -1,15 +1,17 @@
-from clip.model import CLIP
+from typing import List
+
 import torch
 from clip import clip
-from torchvision.transforms.transforms import Compose
-from ultralytics import YOLO
-from torchvision.transforms import ToPILImage, GaussianBlur
-from typing import List
-from ultralytics.yolo.engine.results import Results
-from vgproject.utils.data_types import BatchSample, Result
-from tqdm import tqdm
+from clip.model import CLIP
 from PIL import Image
 from torch import Tensor
+from torchvision.transforms import GaussianBlur, ToPILImage
+from torchvision.transforms.transforms import Compose
+from tqdm import tqdm
+from ultralytics import YOLO
+from ultralytics.yolo.engine.results import Results
+
+from vgproject.utils.data_types import BatchSample, Result
 
 
 class Baseline:

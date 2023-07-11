@@ -1,13 +1,14 @@
 from typing import Any, Dict, List, Tuple
-import torch
-from .data_types import BatchSample
 
-from torch import Tensor, device
 import albumentations as A
+import cv2
+import numpy as np
+import torch
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
-import numpy as np
-import cv2
+from torch import Tensor, device
+
+from .data_types import BatchSample
 
 
 def custom_collate(
