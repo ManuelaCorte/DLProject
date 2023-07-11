@@ -1,17 +1,19 @@
 from typing import List
+
+import torch
 from matplotlib import pyplot as plt
+from torch import Tensor
+from torch.utils.data import DataLoader
+from torchvision.io import read_image
+from torchvision.utils import draw_bounding_boxes
+from torchviz import make_dot  # type: ignore
 
 from vgproject.data.dataset import VGDataset
 from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.misc import custom_collate
-from .data_types import BatchSample, BboxType, Sample, Split
+
 from .config import Config
-from torch.utils.data import DataLoader
-from torchvision.utils import draw_bounding_boxes
-from torchvision.io import read_image
-from torch import Tensor
-import torch
-from torchviz import make_dot  # type: ignore
+from .data_types import BatchSample, BboxType, Sample, Split
 
 
 def visualize(samples: List[Sample], predictions: Tensor) -> None:

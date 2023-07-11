@@ -1,6 +1,6 @@
 # https://stackoverflow.com/questions/31875/is-there-a-simple-elegant-way-to-define-singletons?noredirect=1&lq=1
-from typing import Any, Dict
 import json
+from typing import Any, Dict
 
 
 class Singleton:

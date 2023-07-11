@@ -1,6 +1,6 @@
-from typing import Dict, List
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List
 
 
 @dataclass(frozen=True)

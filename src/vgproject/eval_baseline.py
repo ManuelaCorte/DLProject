@@ -1,14 +1,16 @@
 from typing import Any, List
-from tqdm import tqdm
-from vgproject.utils.misc import custom_collate
-from vgproject.data.dataset import VGDataset
-from vgproject.utils.data_types import Result, Split, BboxType
-from vgproject.models.baseline import Baseline
+
 import torch
+from torch import Tensor
 from torch.utils.data import DataLoader
 from torchvision.ops import box_iou
-from torch import Tensor
+from tqdm import tqdm
+
+from vgproject.data.dataset import VGDataset
+from vgproject.models.baseline import Baseline
 from vgproject.utils.config import Config
+from vgproject.utils.data_types import BboxType, Result, Split
+from vgproject.utils.misc import custom_collate
 
 cfg = Config.get_instance()  # type: ignore
 

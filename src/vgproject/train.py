@@ -1,23 +1,23 @@
+import gc
 import os
 from typing import Any, Dict, List, Tuple
-import gc
 
-from vgproject.data.dataset import VGDataset
-from vgproject.models.vg_model.vg_model import VGModel
-from vgproject.utils.data_types import Split, BatchSample, BboxType
-from vgproject.utils.misc import custom_collate
-from vgproject.utils.config import Config
-from vgproject.metrics.loss import Loss
-
+import optuna
 import torch
 import torch.optim as optim
+from optuna.trial import Trial
+from optuna.visualization import plot_optimization_history
 from torch import Tensor
 from torch.utils.data import DataLoader
 from torchvision.ops import box_iou
 from tqdm import tqdm
-import optuna
-from optuna.trial import Trial
-from optuna.visualization import plot_optimization_history
+
+from vgproject.data.dataset import VGDataset
+from vgproject.metrics.loss import Loss
+from vgproject.models.vg_model.vg_model import VGModel
+from vgproject.utils.config import Config
+from vgproject.utils.data_types import BatchSample, BboxType, Split
+from vgproject.utils.misc import custom_collate
 
 
 def objective(trial: Trial) -> float:

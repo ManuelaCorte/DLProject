@@ -1,16 +1,18 @@
 from typing import List
+
 import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.utils.data import DataLoader
 
 from vgproject.data.dataset import VGDataset
-from vgproject.utils.misc import custom_collate
-from vgproject.utils.config import Config
-from vgproject.utils.data_types import BatchSample, Split, BboxType
 from vgproject.models.clip.model import CLIP, build_model
-from .fusion_module import FusionModule
+from vgproject.utils.config import Config
+from vgproject.utils.data_types import BatchSample, BboxType, Split
+from vgproject.utils.misc import custom_collate
+
 from .decoder import Decoder
+from .fusion_module import FusionModule
 
 
 class VGModel(nn.Module):

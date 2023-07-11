@@ -1,16 +1,18 @@
-from torch.utils.data import Dataset
-from torchvision.ops import box_convert
-from torchvision.io import read_image
-import torch
-import pickle
 import json
-from vgproject.data.process import preprocess
-from vgproject.utils.data_types import BboxType, Sample, Split, BatchSample
-from vgproject.utils.misc import transform_sample
+import pickle
 from typing import Any, Dict, List, Tuple
-from torch import Tensor, tensor, device
-from PIL import Image
+
+import torch
 from clip import clip
+from PIL import Image
+from torch import Tensor, device, tensor
+from torch.utils.data import Dataset
+from torchvision.io import read_image
+from torchvision.ops import box_convert
+
+from vgproject.data.process import preprocess
+from vgproject.utils.data_types import BatchSample, BboxType, Sample, Split
+from vgproject.utils.misc import transform_sample
 
 
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.

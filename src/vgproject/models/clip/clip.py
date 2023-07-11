@@ -1,10 +1,10 @@
-from typing import Union, List
 import warnings
-import pkg_resources as p
+from typing import List, Union
 
+import pkg_resources as p
 import torch
 from PIL import Image
-from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
+from torchvision.transforms import CenterCrop, Compose, Normalize, Resize, ToTensor
 
 from .simple_tokenizer import SimpleTokenizer as _Tokenizer
 
