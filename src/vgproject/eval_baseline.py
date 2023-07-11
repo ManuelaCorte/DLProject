@@ -19,7 +19,7 @@ test_data = VGDataset(
     split=Split.TEST,
     output_bbox_type=BboxType.XYXY,
     augment=False,
-    transform=False,
+    transform=True,
     preprocessed=True,
 )
 print("Dataset length: ", len(test_data))
