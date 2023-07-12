@@ -1,19 +1,13 @@
-from typing import List, Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn
 from torch import Tensor, device
 
-from vgproject.utils.config import Config
-
 
 class FusionModule(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, emb_dim: int, clip_emb_dim: int, proj_img_size: int) -> None:
         super().__init__()
-        cfg = Config()
-        emb_dim = cfg.model.embed_dim
-        proj_img_size = cfg.model.proj_img_size
-        clip_emb_dim = cfg.model.clip_embed_dim
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.text_projection = nn.Sequential(
             nn.Linear(in_features=clip_emb_dim, out_features=clip_emb_dim), nn.ReLU()

@@ -85,7 +85,8 @@ if __name__ == "__main__":
     )
     visualize(samples, predictions)
 
-    test = VGModel(1024, 256)
+    cfg = Config()
+    test = VGModel(cfg)
     for batch, bbox in dataloader:
         # print(batch[0].image, batch[0].caption)
         out = test(batch)

@@ -4,30 +4,34 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from vgproject.utils.config import Config
-
 
 class Decoder(nn.Module):
-    def __init__(self, d_model: int, img_size: int) -> None:
+    def __init__(
+        self,
+        d_model: int,
+        img_size: int,
+        clip_ctx_length: int,
+        nheads: int,
+        nlayers: int,
+    ) -> None:
         super().__init__()
-        cfg = Config()
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.d_model = d_model
-        self.pos_embedding_1d = PositionalEncoding1D(
-            d_model, cfg.model.clip_ctx_length
-        ).to(self.device)
+        self.pos_embedding_1d = PositionalEncoding1D(d_model, clip_ctx_length).to(
+            self.device
+        )
         self.pos_embeddinf_2d = PositionalEncoding2D(d_model, img_size, img_size).to(
             self.device
         )
         self.decoder = nn.TransformerDecoder(
             decoder_layer=nn.TransformerDecoderLayer(
                 d_model=d_model,
-                nhead=cfg.model.decoder_heads,
+                nhead=nheads,
                 batch_first=True,
                 device=self.device,
             ),
-            num_layers=cfg.model.decoder_layers,
+            num_layers=nlayers,
             norm=nn.LayerNorm(d_model, device=self.device),
         )
         self.reg_token = nn.Parameter(torch.randn(1, 1, d_model)).to(self.device)

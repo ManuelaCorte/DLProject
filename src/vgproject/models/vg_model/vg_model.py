@@ -18,11 +18,13 @@ from .fusion_module import FusionModule
 class VGModel(nn.Module):
     def __init__(
         self,
-        embed_dim: int,
-        mlp_hidden_dim: int,
+        cfg: Config,
     ) -> None:
         super().__init__()
-        cfg = Config()
+        self.cfg: Config = cfg
+        embed_dim: int = cfg.model.embed_dim
+        mlp_hidden_dim: int = cfg.model.mlp_hidden_dim
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.clip: CLIP = torch.jit.load("../RN50.pt", map_location="cpu").eval()
@@ -32,10 +34,21 @@ class VGModel(nn.Module):
         self.pretrained_model.float()
         del self.clip
 
-        self.fusion_module: FusionModule = FusionModule().to(self.device)
-        self.decoder: Decoder = Decoder(embed_dim, cfg.model.proj_img_size).to(
-            self.device
-        )
+        # Freeze all clip parameters except the attention pooling layer
+        for param in self.pretrained_model.parameters():
+            param.requires_grad = False
+        self.pretrained_model.visual.attnpool.requires_grad_(True)
+
+        self.fusion_module: FusionModule = FusionModule(
+            embed_dim, cfg.model.clip_embed_dim, cfg.model.proj_img_size
+        ).to(self.device)
+        self.decoder: Decoder = Decoder(
+            embed_dim,
+            cfg.model.proj_img_size,
+            cfg.model.clip_ctx_length,
+            cfg.model.decoder_heads,
+            cfg.model.decoder_layers,
+        ).to(self.device)
 
         self.reg_head: MLP = MLP(
             input_dim=embed_dim, output_dim=4, hidden_dim_1=mlp_hidden_dim
@@ -94,7 +107,7 @@ if __name__ == "__main__":
         shuffle=False,
         drop_last=True,
     )
-    test = VGModel(cfg.model.embed_dim, cfg.model.mlp_hidden_dim)
+    test = VGModel(cfg)
     for batch, bbox in dataloader:
         out = test(batch)
         print(out, bbox)
