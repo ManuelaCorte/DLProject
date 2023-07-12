@@ -4,45 +4,55 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+from vgproject.utils.config import Config
 
-# TODO: Possibly add learnable positional encoding
+
 class Decoder(nn.Module):
     def __init__(self, d_model: int, img_size: int) -> None:
         super().__init__()
+        cfg = Config()
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.d_model = d_model
-        self.pos_embedding_1d = PositionalEncoding1D(d_model, 0.1, 77)
-        self.pos_embeddinf_2d = PositionalEncoding2D(d_model, img_size, img_size)
+        self.pos_embedding_1d = PositionalEncoding1D(
+            d_model, cfg.model.clip_ctx_length
+        ).to(self.device)
+        self.pos_embeddinf_2d = PositionalEncoding2D(d_model, img_size, img_size).to(
+            self.device
+        )
         self.decoder = nn.TransformerDecoder(
             decoder_layer=nn.TransformerDecoderLayer(
                 d_model=d_model,
-                nhead=8,
+                nhead=cfg.model.decoder_heads,
                 batch_first=True,
+                device=self.device,
             ),
-            num_layers=6,
-            norm=nn.LayerNorm(d_model),
+            num_layers=cfg.model.decoder_layers,
+            norm=nn.LayerNorm(d_model, device=self.device),
         )
-        self.reg_token = nn.Parameter(torch.randn(1, 1, d_model))
+        self.reg_token = nn.Parameter(torch.randn(1, 1, d_model)).to(self.device)
 
     def forward(self, vis: Tensor, text: Tensor) -> Tensor:
-        text_pe: Tensor = self.pos_embedding_1d(text)
-        text = text + text_pe
-        visual_pe: Tensor = self.pos_embeddinf_2d(vis)
-        visual_features = vis + visual_pe
+        text_features: Tensor = self.pos_embedding_1d(text)
+
+        visual_features: Tensor = self.pos_embeddinf_2d(vis)
 
         visual_features = visual_features.flatten(2).permute(0, 2, 1)  # B HW D
 
         visual_features = torch.cat(
             [self.reg_token.expand((vis.shape[0], -1, -1)), visual_features], dim=1
         )
-        x = self.decoder(visual_features, text)
+        x = self.decoder(visual_features, text_features)
         return x[:, 0, :]
 
 
+# Positional encodings implemented in separate classes if we want to change them and use learnable positional encodings instead
+# Dropout added following the original transformer implementation
 # https://github.com/wzlxjtu/PositionalEncoding2D
 class PositionalEncoding1D(nn.Module):
-    def __init__(self, d_model: int, dropout_p: float, window_len: int) -> None:
+    def __init__(self, d_model: int, window_len: int) -> None:
         super().__init__()
-        self.dropout = nn.Dropout(dropout_p)
+        self.dropout = nn.Dropout(0.1)
         self.pos_encoding = torch.zeros(window_len, d_model)
         position = torch.arange(0, window_len).unsqueeze(1)
         div_term = torch.exp(
@@ -63,6 +73,7 @@ class PositionalEncoding1D(nn.Module):
         return out
 
 
+# First half of the encodings are used for the height and the second half for the width
 class PositionalEncoding2D(nn.Module):
     def __init__(self, d_model: int, width: int, height: int) -> None:
         super().__init__()
@@ -76,11 +87,11 @@ class PositionalEncoding2D(nn.Module):
         pos_w = torch.arange(0.0, width).unsqueeze(1)
         pos_h = torch.arange(0.0, height).unsqueeze(1)
         self.pe[0:d_model:2, :, :] = (
-            torch.sin(pos_w * div_term)
+            torch.sin(pos_w * div_term)  # H d_model/4
             .transpose(0, 1)
             .unsqueeze(1)
             .repeat(1, height, 1)
-        )
+        )  # d_model/4 H H
         self.pe[1:d_model:2, :, :] = (
             torch.cos(pos_w * div_term)
             .transpose(0, 1)
@@ -89,7 +100,7 @@ class PositionalEncoding2D(nn.Module):
         )
         self.pe[d_model::2, :, :] = (
             torch.sin(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
-        )
+        )  # d_model/4 W W
         self.pe[d_model + 1 :: 2, :, :] = (
             torch.cos(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
         )

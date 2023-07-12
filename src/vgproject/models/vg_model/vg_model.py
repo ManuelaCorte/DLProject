@@ -22,15 +22,20 @@ class VGModel(nn.Module):
         mlp_hidden_dim: int,
     ) -> None:
         super().__init__()
+        cfg = Config()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.clip: CLIP = torch.jit.load("../RN50.pt", map_location="cpu").eval()
-        self.pretrained_model: CLIP = build_model(self.clip.state_dict())
+        self.pretrained_model: CLIP = build_model(self.clip.state_dict()).to(
+            self.device
+        )
         self.pretrained_model.float()
         del self.clip
 
-        self.fusion_module: FusionModule = FusionModule()
-        self.decoder: Decoder = Decoder(embed_dim, 14)
+        self.fusion_module: FusionModule = FusionModule().to(self.device)
+        self.decoder: Decoder = Decoder(embed_dim, cfg.model.proj_img_size).to(
+            self.device
+        )
 
         self.reg_head: MLP = MLP(
             input_dim=embed_dim, output_dim=4, hidden_dim_1=mlp_hidden_dim
@@ -74,7 +79,7 @@ class MLP(nn.Module):
 
 
 if __name__ == "__main__":
-    cfg = Config.get_instance()  # type: ignore
+    cfg = Config()
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.VAL,
@@ -89,7 +94,7 @@ if __name__ == "__main__":
         shuffle=False,
         drop_last=True,
     )
-    test = VGModel(512, 128)
+    test = VGModel(cfg.model.embed_dim, cfg.model.mlp_hidden_dim)
     for batch, bbox in dataloader:
         out = test(batch)
         print(out, bbox)
