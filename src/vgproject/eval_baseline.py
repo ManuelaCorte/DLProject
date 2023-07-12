@@ -12,7 +12,7 @@ from vgproject.utils.config import Config
 from vgproject.utils.data_types import BboxType, Result, Split
 from vgproject.utils.misc import custom_collate
 
-cfg = Config.get_instance()  # type: ignore
+cfg = Config()
 
 baseline = Baseline()
 
@@ -28,7 +28,7 @@ print("Dataset length: ", len(test_data))
 
 dataloader: DataLoader[Any] = DataLoader(
     dataset=test_data,
-    batch_size=cfg.batch_size,
+    batch_size=cfg.train.batch_size,
     shuffle=False,
     collate_fn=custom_collate,
     drop_last=True,

@@ -21,10 +21,10 @@ from vgproject.utils.misc import custom_collate
 
 
 def objective(trial: Trial) -> float:
-    cfg = Config.get_instance()  # type: ignore
+    cfg = Config()
     train_dataset: VGDataset = VGDataset(
         dir_path=cfg.dataset_path,
-        split=Split.TRAIN,
+        split=Split.VAL,
         output_bbox_type=BboxType.XYXY,
         augment=True,
         preprocessed=True,
@@ -40,11 +40,12 @@ def objective(trial: Trial) -> float:
     )
     print("Validation dataset created. Dataset length: ", len(val_dataset))
 
-    batch_size = trial.suggest_int(
-        "batch_size",
-        1,
-        10,
-    )
+    # batch_size = trial.suggest_int(
+    #     "batch_size",
+    #     1,
+    #     10,
+    # )
+    batch_size = 2
     train_dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
@@ -68,27 +69,26 @@ def objective(trial: Trial) -> float:
     losses_list: List[float] = []
     accuracies_list: List[float] = []
 
-    hidden_dim_1 = trial.suggest_int("hidden_dim_1", 512, 2048)
-    hidden_dim_2 = trial.suggest_int("hidden_dim_2", 128, 512)
-    if cfg.logging["resume"]:
-        checkpoint: Dict[str, Any] = torch.load(cfg.logging["path"] + "model.pth")
-        model = VGModel(hidden_dim_1, hidden_dim_2).to(device)
+    hidden_dim_1 = trial.suggest_int("hidden_dim_2", 64, 256)
+    if cfg.logging.resume:
+        checkpoint: Dict[str, Any] = torch.load(cfg.logging.path + "model.pth")
+        model = VGModel(512, hidden_dim_1).to(device)
         model.load_state_dict(checkpoint["model_state_dict"])
         lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
         optimizer = optim.AdamW(model.parameters(), lr=lr)
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
         lr_scheduler = optim.lr_scheduler.ExponentialLR(
-            optimizer, gamma=cfg.model["gamma"]
+            optimizer, gamma=cfg.train.gamma
         )
         lr_scheduler.load_state_dict(checkpoint["lr_scheduler_state_dict"])
         start_epoch: int = checkpoint["epoch"]
         losses_list.append(checkpoint["loss"])
     else:
-        model = VGModel(hidden_dim_1, hidden_dim_2).train()
+        model = VGModel(512, hidden_dim_1).train()
         lr = trial.suggest_float("lr", 1e-5, 1e-2)
         optimizer = optim.AdamW(model.parameters(), lr=lr)
         lr_scheduler = optim.lr_scheduler.ExponentialLR(
-            optimizer, gamma=cfg.model["gamma"]
+            optimizer, gamma=cfg.train.gamma
         )
         start_epoch = 0
 
@@ -112,8 +112,8 @@ def objective(trial: Trial) -> float:
             raise optuna.TrialPruned()
 
         # Save model after each epoch
-        if cfg.logging["save_model"]:
-            dir: str = cfg.logging["path"]
+        if cfg.logging.save:
+            dir: str = cfg.logging.path
             if not os.path.exists(dir):
                 os.makedirs(dir)
 
@@ -125,7 +125,7 @@ def objective(trial: Trial) -> float:
                     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
                     "loss": epoch_loss,
                 },
-                f=f"{cfg.logging['path']}model.pth",
+                f=f"{cfg.logging.path}model.pth",
             )
 
         torch.cuda.empty_cache()

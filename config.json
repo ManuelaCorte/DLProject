@@ -1,25 +1,30 @@
 {
   "dataset_path": "../data/raw/refcocog/",
   "epochs": 2,
-  "batch_size": 8,
 
   "model": {
-    "emb_dim": 512,
+    "clip_embed_dim": 1024,
+    "clip_ctx_length": 77,
+
+    "embed_dim": 512,
+    "mlp_hidden_dim": 128,
+    "img_size": 224,
+
+    "proj_img_size": 14,
+
+    "decoder_layers": 6,
+    "decoder_heads": 8
+  },
+
+  "train": {
+    "batch_size": 8,
     "lr": 0.0001,
-    "gamma": 0.8,
-    "attention_heads": 4,
-    "mlp_hidden_dim_1": 256
+    "gamma": 0.8
   },
-
-  "visual_encoder": {
-    "resnet_resolution": 56,
-    "resnet_channels": 256,
-    "output_dim": 1024
-  },
-
   "logging": {
     "path": "../runs/",
-    "save_model": true,
-    "resume": false
+    "save": true,
+    "resume": false,
+    "wandb": false
   }
 }

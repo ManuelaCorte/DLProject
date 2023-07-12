@@ -44,9 +44,9 @@ class Baseline:
             blurs: List[torch.Tensor] = []
             boxes: List[torch.Tensor] = []
 
-            for bbox in image_bboxes.boxes:  # type: ignore
+            for bbox in image_bboxes.boxes:
                 bbox = bbox.to(self.device)
-                xmin, ymin, xmax, ymax = bbox.xyxy.int()[0]  # type: ignore
+                xmin, ymin, xmax, ymax = bbox.xyxy.int()[0]
                 boxes.append(torch.tensor([xmin, ymin, xmax, ymax], device=self.device))
                 blurred: Tensor = GaussianBlur(25, 50)(sample.image).to(self.device)
                 blurred[:, ymin:ymax, xmin:xmax] = image[:, ymin:ymax, xmin:xmax]
@@ -77,8 +77,8 @@ class Baseline:
         caption: torch.Tensor,
     ) -> torch.Tensor:
         # text = clip.tokenize(caption)
-        crops = [self.clip_preprocessor(ToPILImage()(crop)) for crop in crops]  # type: ignore
-        blurs = [self.clip_preprocessor(ToPILImage()(blur)) for blur in blurs]  # type: ignore
+        crops = [self.clip_preprocessor(ToPILImage()(crop)) for crop in crops]
+        blurs = [self.clip_preprocessor(ToPILImage()(blur)) for blur in blurs]
         images_crops: Tensor = torch.stack(tensors=crops).to(device=self.device)
         # print(images.shape)
         logits_per_image_crops, _ = self.clip_model(images_crops, caption)

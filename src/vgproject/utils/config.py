@@ -1,6 +1,6 @@
-# https://stackoverflow.com/questions/31875/is-there-a-simple-elegant-way-to-define-singletons?noredirect=1&lq=1
 import json
 from typing import Any, Dict
+from dataclasses import dataclass
 
 
 class Singleton:
@@ -26,11 +26,43 @@ class Singleton:
         return isinstance(inst, self._decorated)
 
 
-@Singleton
+@dataclass
+class Model:
+    clip_embed_dim: int
+    clip_ctx_length: int
+    embed_dim: int
+    mlp_hidden_dim: int
+    img_size: int
+    proj_img_size: int
+    decoder_layers: int
+    decoder_heads: int
+
+
+@dataclass
+class Train:
+    batch_size: int
+    lr: float
+    gamma: float
+
+
+@dataclass
+class Logging:
+    path: str
+    save: bool
+    resume: bool
+    wandb: bool
+
+
 class Config:
     def __init__(self) -> None:
-        with open(file="../config.json", mode="r") as fp:
-            cfg: Dict[str, Any] = json.load(fp=fp)
-        for k, v in cfg.items():
-            setattr(self, k, v)
-        # self.__dict__.update(cfg)
+        cfg: Dict[str, Any] = json.load(open("../config.json", "r"))
+        self.dataset_path: str = cfg["dataset_path"]
+        self.epochs: int = cfg["epochs"]
+        self.model = Model(**cfg["model"])
+        self.train = Train(**cfg["train"])
+        self.logging = Logging(**cfg["logging"])
+
+
+if __name__ == "__main__":
+    config = Config()
+    print(config.model.clip_embed_dim)

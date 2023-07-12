@@ -1,20 +1,57 @@
-from typing import Tuple
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-from torch import Tensor
+from torch import Tensor, device
+
+from vgproject.utils.config import Config
 
 
 class FusionModule(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.conv_l4 = _conv_layer(1024, 1024, 1)
-        self.text_projection = nn.Sequential(nn.Linear(1024, 1024), nn.ReLU())
-        self.vis_l4_projection = _conv_layer(1024, 1024, 1, 0)
-        self.norm_layer = nn.Sequential(nn.LayerNorm([1024, 7, 7]), nn.ReLU())
-        self.vis_l3_projection = _conv_layer(1024 + 1024, 512, 3, 1)
-        self.vis_l2_projection = _conv_layer(512 + 512, 512, 3, 1)
-        self.aggregation = _conv_layer(1024 + 512 + 512, 512, 1, 0)
+        cfg = Config()
+        emb_dim = cfg.model.embed_dim
+        proj_img_size = cfg.model.proj_img_size
+        clip_emb_dim = cfg.model.clip_embed_dim
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.text_projection = nn.Sequential(
+            nn.Linear(in_features=clip_emb_dim, out_features=clip_emb_dim), nn.ReLU()
+        ).to(self.device)
+        self.vis_l4_projection = _conv_layer(
+            input_dim=clip_emb_dim,
+            output_dim=clip_emb_dim,
+            kernel_size=1,
+            padding=0,
+            device=self.device,
+        )
+        self.norm_layer = nn.Sequential(
+            nn.LayerNorm(
+                [1024, proj_img_size // 2, proj_img_size // 2], device=self.device
+            ),
+            nn.ReLU(),
+        ).to(self.device)
+        self.vis_l3_projection = _conv_layer(
+            input_dim=clip_emb_dim + clip_emb_dim,
+            output_dim=emb_dim,
+            kernel_size=3,
+            padding=1,
+            device=self.device,
+        )
+        self.vis_l2_projection = _conv_layer(
+            input_dim=emb_dim + emb_dim,
+            output_dim=emb_dim,
+            kernel_size=3,
+            padding=1,
+            device=self.device,
+        )
+        self.aggregation = _conv_layer(
+            input_dim=clip_emb_dim + emb_dim + emb_dim,
+            output_dim=emb_dim,
+            kernel_size=1,
+            padding=0,
+            device=self.device,
+        )
 
     def forward(
         self, visual_features: Tuple[Tensor, Tensor, Tensor], text_features: Tensor
@@ -58,7 +95,11 @@ class FusionModule(nn.Module):
 
 
 def _conv_layer(
-    input_dim: int, output_dim: int, kernel_size: int, padding: int = 0
+    input_dim: int,
+    output_dim: int,
+    kernel_size: int,
+    padding: int,
+    device: device,
 ) -> nn.Sequential:
     return nn.Sequential(
         nn.Conv2d(
@@ -66,7 +107,8 @@ def _conv_layer(
             out_channels=output_dim,
             kernel_size=kernel_size,
             padding=padding,
+            device=device,
         ),
-        nn.BatchNorm2d(output_dim),
+        nn.BatchNorm2d(output_dim, device=device),
         nn.ReLU(),
     )

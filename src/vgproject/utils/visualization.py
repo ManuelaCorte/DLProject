@@ -63,7 +63,7 @@ def visualize_network(model: torch.nn.Module, batch: List[BatchSample]) -> None:
 
 
 if __name__ == "__main__":
-    cfg = Config.get_instance()  # type: ignore
+    cfg = Config()
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.TEST,
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     )
     dataloader = DataLoader(
         dataset,
-        batch_size=cfg.batch_size,
+        batch_size=cfg.train.batch_size,
         collate_fn=custom_collate,
         shuffle=True,
         drop_last=True,
