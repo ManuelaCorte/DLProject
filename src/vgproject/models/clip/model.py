@@ -84,43 +84,32 @@ class AttentionPool2d(nn.Module):
         self.num_heads = num_heads
         # residual
         self.connect = nn.Sequential(
-            nn.Conv2d(embed_dim, output_dim, 1, stride=1, bias=False),
+            nn.Conv2d(embed_dim, output_dim, 1),
             nn.BatchNorm2d(output_dim),
         )
 
     def resize_pos_embed(self, pos_embed, input_shape):
-        """Resize pos_embed weights using bicubic interpolate method.
-        Args:
-            pos_embed (torch.Tensor): Position embedding weights.
-            input_shape (tuple): Tuple for (downsampled input image height,
-                downsampled input image width).
-            pos_shape (tuple): The resolution of downsampled origin training
-                image.
-            mode (str): Algorithm used for upsampling:
-                ``'nearest'`` | ``'linear'`` | ``'bilinear'`` | ``'bicubic'`` |
-                ``'trilinear'``. Default: ``'nearest'``
-        Return:
-            torch.Tensor: The resized pos_embed of shape [B, C, L_new]
-        """
-        assert pos_embed.ndim == 3, "shape of pos_embed must be [B, L, C]"
         pos_h = pos_w = self.spacial_dim
         # Skip the first position embedding as it is the CLS token
         pos_embed_weight = pos_embed[:, (-1 * pos_h * pos_w) :, :]  # 1 HW C
-        pos_embed_weight = pos_embed_weight.reshape(
-            1, pos_h, pos_w, pos_embed.shape[2]
-        ).permute(
-            0, 3, 1, 2
-        )  # 1 C H W
-        pos_embed_weight = F.interpolate(
-            pos_embed_weight, size=input_shape, align_corners=False, mode="bicubic"
-        )
-        pos_embed_weight = torch.flatten(pos_embed_weight, 2).transpose(1, 2)  # 1 HW C
-        return pos_embed_weight.transpose(-2, -1)  # 1 C HW
+        pos_embed_weight = pos_embed_weight.permute(0, 2, 1)
+        return pos_embed_weight
+
+        # pos_embed_weight = pos_embed_weight.reshape(
+        #     1, pos_h, pos_w, pos_embed.shape[2]
+        # ).permute(
+        #     0, 3, 1, 2
+        # )  # 1 C H W
+        # # pos_embed_weight_int = F.interpolate(
+        # #     pos_embed_weight, size=input_shape, align_corners=False, mode="bicubic"
+        # # )
+        # pos_embed_weight = torch.flatten(pos_embed_weight, 2).transpose(1, 2)  # 1 HW C
+        # return pos_embed_weight.transpose(-2, -1)  # 1 C HW
 
     def forward(self, x):
         B, C, H, W = x.size()
         # Residual connection
-        res = self.connect(x)
+        residual = self.connect(x)
 
         x = x.reshape(B, C, -1)  # B C HW
         pos_embed = self.positional_embedding.unsqueeze(0)
@@ -151,7 +140,7 @@ class AttentionPool2d(nn.Module):
             need_weights=False,
         )
         x = x.permute(1, 2, 0).reshape(B, -1, H, W)  # B C H W
-        x = x + res
+        x = x + residual
         x = F.relu(x, True)
 
         return x

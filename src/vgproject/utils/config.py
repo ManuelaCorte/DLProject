@@ -1,6 +1,6 @@
 import json
-from typing import Any, Dict
 from dataclasses import dataclass
+from typing import Any, Dict
 
 
 class Singleton:
@@ -62,7 +62,16 @@ class Config:
         self.train = Train(**cfg["train"])
         self.logging = Logging(**cfg["logging"])
 
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "dataset_path": self.dataset_path,
+            "epochs": self.epochs,
+            "model": self.model.__dict__,
+            "train": self.train.__dict__,
+        }
+
 
 if __name__ == "__main__":
     config = Config()
     print(config.model.clip_embed_dim)
+    print(config.as_dict())

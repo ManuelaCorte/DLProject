@@ -1,6 +1,6 @@
 {
   "dataset_path": "../data/raw/refcocog/",
-  "epochs": 2,
+  "epochs": 10,
 
   "model": {
     "clip_embed_dim": 1024,
