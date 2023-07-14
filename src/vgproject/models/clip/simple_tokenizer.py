@@ -85,7 +85,7 @@ class SimpleTokenizer(object):
             "<|endoftext|>": "<|endoftext|>",
         }
         self.pat = re.compile(
-            r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
+            r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\\p{L}]+|[\\p{N}]|[^\s\\p{L}\\p{N}]+""",
             re.IGNORECASE,
         )
 
