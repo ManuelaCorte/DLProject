@@ -98,18 +98,18 @@ def train_one_epoch(
 
         # Loss and metrics
         batch_loss: Tensor = loss.compute(out, bbox)
-        epoch_loss_list.append(batch_loss)
 
         # Backward pass
         batch_loss.backward()
         optimizer.step()
         optimizer.zero_grad()
 
+        epoch_loss_list.append(batch_loss.detach())
         if idx % 100 == 0:
             wandb.log(
                 {
                     "epoch": epoch,
-                    "loss": batch_loss.item(),
+                    "loss": batch_loss.detach().item(),
                     "accuracy": torch.diagonal(box_iou(out, bbox)).mean().item(),
                 },
                 step=idx,
