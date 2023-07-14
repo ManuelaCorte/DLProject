@@ -56,12 +56,14 @@ class Decoder(nn.Module):
 class PositionalEncoding1D(nn.Module):
     def __init__(self, d_model: int, window_len: int) -> None:
         super().__init__()
-        self.dropout = nn.Dropout(0.1)
-        self.pos_encoding = torch.zeros(window_len, d_model)
-        position = torch.arange(0, window_len).unsqueeze(1)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.dropout = nn.Dropout(0.1).to(self.device)
+        self.pos_encoding = torch.zeros(window_len, d_model, device=self.device)
+        position = torch.arange(0, window_len, device=self.device).unsqueeze(1)
         div_term = torch.exp(
             (
-                torch.arange(0, d_model, 2, dtype=torch.float)
+                torch.arange(0, d_model, 2, dtype=torch.float, device=self.device)
                 * -(math.log(10000.0) / d_model)
             )
         )
@@ -81,15 +83,18 @@ class PositionalEncoding1D(nn.Module):
 class PositionalEncoding2D(nn.Module):
     def __init__(self, d_model: int, width: int, height: int) -> None:
         super().__init__()
-        self.dropout = nn.Dropout(0.1)
-        self.pe = torch.zeros(d_model, height, width)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.dropout = nn.Dropout(0.1).to(self.device)
+        self.pe = torch.zeros(d_model, height, width, device=self.device)
         # Each dimension use half of d_model
         d_model = int(d_model / 2)
         div_term = torch.exp(
-            torch.arange(0.0, d_model, 2) * -(math.log(10000.0) / d_model)
+            torch.arange(0.0, d_model, 2, device=self.device)
+            * -(math.log(10000.0) / d_model)
         )
-        pos_w = torch.arange(0.0, width).unsqueeze(1)
-        pos_h = torch.arange(0.0, height).unsqueeze(1)
+        pos_w = torch.arange(0.0, width, device=self.device).unsqueeze(1)
+        pos_h = torch.arange(0.0, height, device=self.device).unsqueeze(1)
         self.pe[0:d_model:2, :, :] = (
             torch.sin(pos_w * div_term)  # H d_model/4
             .transpose(0, 1)
