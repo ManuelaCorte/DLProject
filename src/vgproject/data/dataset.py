@@ -3,7 +3,6 @@ import pickle
 from typing import Any, Dict, List, Tuple
 
 import torch
-from clip import clip
 from PIL import Image
 from torch import Tensor, device, tensor
 from torch.utils.data import Dataset
@@ -13,6 +12,7 @@ from torchvision.ops import box_convert
 from vgproject.data.process import preprocess
 from vgproject.utils.data_types import BatchSample, BboxType, Sample, Split
 from vgproject.utils.misc import transform_sample
+from vgproject.models.clip import tokenize
 
 
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.
@@ -52,7 +52,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
         # extended_caption: str = f"find the region that corresponds to the description {self.samples[ref_id].caption}"
-        caption: Tensor = clip.tokenize(self.samples[ref_id].caption)  # type: ignore
+        caption: Tensor = tokenize(self.samples[ref_id].caption)  # type: ignore
         if self.transform:
             image, bbox = transform_sample(
                 Image.open(self.samples[ref_id].image_path),
