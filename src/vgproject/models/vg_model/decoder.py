@@ -13,6 +13,7 @@ class Decoder(nn.Module):
         clip_ctx_length: int,
         nheads: int,
         nlayers: int,
+        dim_feedforward: int,
     ) -> None:
         super().__init__()
 
@@ -28,8 +29,10 @@ class Decoder(nn.Module):
             decoder_layer=nn.TransformerDecoderLayer(
                 d_model=d_model,
                 nhead=nheads,
+                dim_feedforward=dim_feedforward,
                 batch_first=True,
                 device=self.device,
+                # norm_first=True,  Less prone to vanishing gradients??
             ),
             num_layers=nlayers,
             norm=nn.LayerNorm(d_model, device=self.device),

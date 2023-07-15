@@ -204,19 +204,22 @@ class ModifiedResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        def stem(x: Tensor) -> Tensor:
-            x = self.relu1(self.bn1(self.conv1(x)))
-            x = self.relu2(self.bn2(self.conv2(x)))
-            x = self.relu3(self.bn3(self.conv3(x)))
-            x = self.avgpool(x)
-            return x
+        with torch.no_grad():
 
-        x = x.type(self.conv1.weight.dtype)
-        x_stem: Tensor = stem(x)
-        x1: Tensor = self.layer1(x_stem)
-        x2: Tensor = self.layer2(x1)
-        x3: Tensor = self.layer3(x2)
-        x4: Tensor = self.layer4(x3)
+            def stem(x: Tensor) -> Tensor:
+                x = self.relu1(self.bn1(self.conv1(x)))
+                x = self.relu2(self.bn2(self.conv2(x)))
+                x = self.relu3(self.bn3(self.conv3(x)))
+                x = self.avgpool(x)
+                return x
+
+            x = x.type(self.conv1.weight.dtype)
+            x_stem: Tensor = stem(x)
+            x1: Tensor = self.layer1(x_stem)
+            x2: Tensor = self.layer2(x1)
+            x3: Tensor = self.layer3(x2)
+            x4: Tensor = self.layer4(x3)
+
         x_pooled: Tensor = self.attnpool(x4)
 
         return (
@@ -391,6 +394,7 @@ class CLIP(nn.Module):
     def encode_image(self, image) -> Tuple[Tensor, Tensor, Tensor]:
         return self.visual(image.type(self.dtype))
 
+    @torch.no_grad()
     def encode_text(self, text) -> Tuple[Tensor, Tensor]:
         x = self.token_embedding(text).type(
             self.dtype

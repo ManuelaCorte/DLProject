@@ -10,7 +10,9 @@ from tqdm import tqdm
 from vgproject.utils.data_types import BboxType, Sample, Split
 
 
-def get_samples(dir_path: str) -> Tuple[List[Sample], List[Sample], List[Sample]]:
+def get_samples(
+    dir_path: str, bbox_type: BboxType
+) -> Tuple[List[Sample], List[Sample], List[Sample]]:
     with open(dir_path + "annotations/instances.json", "r") as inst, open(
         dir_path + "annotations/refs(umd).p", "rb"
     ) as refs:
@@ -22,7 +24,7 @@ def get_samples(dir_path: str) -> Tuple[List[Sample], List[Sample], List[Sample]
     for ref in tqdm(references, desc=f"Processing dataset"):
         image_path = get_image_path(dir_path, ref["image_id"], instances)
         caption = get_caption(ref["sentences"])
-        bbox = get_bounding_box(ref["ann_id"], instances)
+        bbox = get_bounding_box(ref["ann_id"], instances, bbox_type)
         split = ref["split"]
         # print(split)
         match split:
@@ -54,24 +56,37 @@ def get_caption(captions: List[Dict[str, Any]]) -> str:
 
 
 # Bounding boxed converted to format compatible with yolo or torchvision
-def get_bounding_box(ann_id: int, instances: Dict[str, Any]) -> Tensor:
+def get_bounding_box(
+    ann_id: int, instances: Dict[str, Any], bbox_type: BboxType
+) -> Tensor:
     bbox = next(ann["bbox"] for ann in instances["annotations"] if ann["id"] == ann_id)
     bounding_box: Tensor = tensor([])
-    bounding_box = box_convert(
-        tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYXY.value
-    )
+    match bbox_type.name:
+        case BboxType.XYXY.name:
+            bounding_box = box_convert(
+                tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYXY.value
+            )
+        case BboxType.XYWH.name:
+            bounding_box = box_convert(
+                tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYWH.value
+            )
+        case BboxType.CXCWH.name:
+            bounding_box = box_convert(
+                tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.CXCWH.value
+            )
+
     return bounding_box
 
 
 # If the files already exist, don't preprocess again
-def preprocess(in_path: str, out_path: str) -> None:
+def preprocess(in_path: str, out_path: str, bbox_type: BboxType) -> None:
     if (
         os.path.exists(f"{out_path}train_samples.json")
         and os.path.exists(f"{out_path}val_samples.json")
         and os.path.exists(f"{out_path}test_samples.json")
     ):
         return
-    train_samples, val_samples, test_samples = get_samples(in_path)
+    train_samples, val_samples, test_samples = get_samples(in_path, bbox_type)
 
     json.dump(
         train_samples,
@@ -93,7 +108,7 @@ def preprocess(in_path: str, out_path: str) -> None:
 
 
 if __name__ == "__main__":
-    preprocess("../data/raw/refcocog/", "../data/processed/")
+    preprocess("../data/raw/refcocog/", "../data/processed/", BboxType.XYWH)
 
     train: List[Sample] = json.load(
         open("../data/processed/train_samples.json", "r"), object_hook=Sample.fromJSON

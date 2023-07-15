@@ -48,6 +48,7 @@ class VGModel(nn.Module):
             cfg.model.clip_ctx_length,
             cfg.model.decoder_heads,
             cfg.model.decoder_layers,
+            cfg.model.decoder_dim_feedforward,
         ).to(self.device)
 
         self.reg_head: MLP = MLP(
