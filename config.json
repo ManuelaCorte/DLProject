@@ -12,19 +12,22 @@
 
     "proj_img_size": 14,
 
-    "decoder_layers": 6,
-    "decoder_heads": 8
+    "decoder_layers": 3,
+    "decoder_heads": 8,
+    "decoder_dim_feedforward": 2048
   },
 
   "train": {
     "batch_size": 8,
-    "lr": 0.00001,
-    "gamma": 0.8
+    "lr": 0.0001,
+    "gamma": 0.8,
+    "l": 1.0,
+    "sweep": true
   },
   "logging": {
     "path": "../runs/",
     "save": true,
     "resume": false,
-    "wandb": false
+    "wandb": true
   }
 }

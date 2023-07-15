@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch import Tensor
-from torchvision.ops import generalized_box_iou_loss
+from torchvision.ops import box_convert, generalized_box_iou_loss
 
 
 class Loss:
@@ -10,11 +10,11 @@ class Loss:
         self.l: float = l
         self.loss: Tensor
 
-    def compute(self, out: Tensor, bbox: Tensor) -> Tensor:
-        # self.loss = self.giou_loss(out, bbox, reduction="mean") + self.l * self.l1_loss(
-        #     out, bbox
-        # )
-        self.loss = self.l1_loss(out, bbox)
+    def compute(self, prediction: Tensor, gt_bbox: Tensor) -> Tensor:
+        bbox = box_convert(prediction, in_fmt="xywh", out_fmt="xyxy")
+        self.loss = self.giou_loss(
+            gt_bbox, bbox, reduction="mean"
+        ) + self.l * self.l1_loss(gt_bbox, bbox)
         return self.loss
 
     def to_float(self) -> float:

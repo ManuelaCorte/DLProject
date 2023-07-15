@@ -1,8 +1,11 @@
 import gc
+import json
 import os
-from typing import List, Tuple
+import pprint
+from typing import Any, Dict, List, Tuple
 
 import torch
+import torch.nn as nn
 import torch.optim as optim
 from dotenv import load_dotenv
 from torch import Tensor
@@ -16,7 +19,7 @@ from vgproject.metrics.loss import Loss
 from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, BboxType, Split
-from vgproject.utils.misc import custom_collate
+from vgproject.utils.misc import custom_collate, init_torch
 
 
 def train(
@@ -31,17 +34,26 @@ def train(
     accuracies_list: List[float] = []
 
     model = VGModel(cfg).train()
-    optimizer = optim.AdamW(model.parameters(), lr=cfg.train.lr)
+    non_frozen_params: List[nn.Parameter] = [
+        p for p in model.parameters() if p.requires_grad
+    ]
+    optimizer = optim.AdamW(non_frozen_params, lr=cfg.train.lr)
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=cfg.train.gamma)
 
-    wandb.watch(model, loss_func, log="all", log_freq=10, log_graph=True)
+    if cfg.logging.wandb:
+        wandb.watch(model, loss_func, log="all", log_freq=10, log_graph=True)
 
     for epoch in tqdm(range(cfg.epochs), desc="Epochs"):
         print("-------------------- Training --------------------------")
         epoch_loss = train_one_epoch(
-            epoch, train_dataloader, model, loss_func, optimizer, device
+            epoch=epoch,
+            dataloader=train_dataloader,
+            model=model,
+            loss=loss_func,
+            optimizer=optimizer,
+            device=device,
+            cfg=cfg,
         )
-        wandb.log({"loss": epoch_loss.item()})
         losses_list.append(epoch_loss.item())
         lr_scheduler.step()
 
@@ -49,6 +61,13 @@ def train(
         print("-------------------- Validation ------------------------")
         accuracy = validate(val_dataloader, model, device)
         accuracies_list.append(accuracy)
+        if cfg.logging.wandb:
+            wandb.log(
+                {
+                    "Validation accuracy": accuracy,
+                },
+                commit=True,
+            )
         print(f"Accuracy: {accuracy} at epoch {epoch}")
 
         # Save model after each epoch
@@ -83,6 +102,7 @@ def train_one_epoch(
     loss: Loss,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
+    cfg: Config,
 ) -> Tensor:
     # As loss we take smooth_l1 + GIoU
     epoch_loss_list: List[Tensor] = []
@@ -106,14 +126,13 @@ def train_one_epoch(
 
         epoch_loss_list.append(batch_loss.detach())
         if idx % 100 == 0:
-            wandb.log(
-                {
-                    "epoch": epoch,
-                    "loss": batch_loss.detach().item(),
-                    "accuracy": torch.diagonal(box_iou(out, bbox)).mean().item(),
-                },
-                step=idx,
-            )
+            report: Dict[str, float] = {
+                "Train loss": batch_loss.detach().item(),
+                "Train accurracy": torch.diagonal(box_iou(out, bbox)).mean().item(),
+            }
+            if cfg.logging.wandb:
+                wandb.log(report, commit=True)
+            pprint.pprint(f"Batches: {idx}, {report}")
 
     return torch.stack(epoch_loss_list).mean()
 
@@ -141,25 +160,33 @@ def validate(
     return torch.stack(accuracy_list).mean().item()
 
 
-def main() -> None:
-    load_dotenv()
-    wandb.login(key=os.getenv("WANDB_API_KEY"))
-    cfg = Config()
-    wandb.init(project="vgproject", config=cfg.as_dict())
-    # cfg: Config = wandb.config  # type: ignore
+def initialize_run(sweep: bool = True) -> None:
+    config = Config()
+    if sweep:
+        load_dotenv()
+        wandb.login(key=os.getenv("WANDB_API_KEY"))
+        wandb.init(project="vgproject")
+        wandb_cfg = wandb.config
+        config.update(wandb_cfg)
+    else:
+        if config.logging.wandb:
+            load_dotenv()
+            wandb.login(key=os.getenv("WANDB_API_KEY"))
+            wandb.init(project="vgproject", config=config.as_dict())
+
     train_dataset: VGDataset = VGDataset(
-        dir_path=cfg.dataset_path,
+        dir_path=config.dataset_path,
         split=Split.TRAIN,
-        output_bbox_type=BboxType.XYXY,
+        output_bbox_type=BboxType.XYWH,
         augment=True,
         preprocessed=True,
     )
     print("Train dataset created. Dataset length ", len(train_dataset))
 
     val_dataset: VGDataset = VGDataset(
-        dir_path=cfg.dataset_path,
+        dir_path=config.dataset_path,
         split=Split.VAL,
-        output_bbox_type=BboxType.XYXY,
+        output_bbox_type=BboxType.XYWH,
         augment=False,
         preprocessed=True,
     )
@@ -167,24 +194,39 @@ def main() -> None:
 
     train_dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
         dataset=train_dataset,
-        batch_size=cfg.train.batch_size,
+        batch_size=config.train.batch_size,
         collate_fn=custom_collate,
+        num_workers=2,
         shuffle=True,
         drop_last=True,
     )
 
     val_dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
         dataset=val_dataset,
-        batch_size=cfg.train.batch_size,
+        batch_size=config.train.batch_size,
         collate_fn=custom_collate,
         shuffle=True,
         drop_last=True,
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train(train_dataloader, val_dataloader, device, cfg)
+    train(train_dataloader, val_dataloader, device, config)
 
-    wandb.finish()
+    if config.logging.wandb:
+        wandb.finish()
+
+
+def main() -> None:
+    init_torch()
+    cfg = Config()
+    if cfg.train.sweep:
+        sweep_configuration: Dict[str, Any] = json.load(
+            open("../sweep_config.json", "r")
+        )
+        sweep: str = wandb.sweep(sweep_configuration, project="vgproject")
+        wandb.agent(sweep, function=initialize_run, count=10)
+    else:
+        initialize_run(cfg.train.sweep)
 
 
 if __name__ == "__main__":

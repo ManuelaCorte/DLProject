@@ -3,29 +3,6 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 
-class Singleton:
-    def __init__(self, decorated_class: Any) -> None:
-        self._decorated = decorated_class
-
-    def get_instance(self) -> Any:
-        """
-        Returns the singleton instance. Upon its first call, it creates a
-        new instance of the decorated class and calls its `__init__` method.
-        On all subsequent calls, the already created instance is returned.
-        """
-        try:
-            return self._instance  # type: ignore
-        except AttributeError:
-            self._instance = self._decorated()
-            return self._instance
-
-    def __call__(self) -> None:
-        raise TypeError("Singletons must be accessed through get_instance() method.")
-
-    def __instancecheck__(self, inst: Any) -> bool:
-        return isinstance(inst, self._decorated)
-
-
 @dataclass
 class Model:
     clip_embed_dim: int
@@ -36,6 +13,7 @@ class Model:
     proj_img_size: int
     decoder_layers: int
     decoder_heads: int
+    decoder_dim_feedforward: int
 
 
 @dataclass
@@ -43,6 +21,8 @@ class Train:
     batch_size: int
     lr: float
     gamma: float
+    l: float
+    sweep: bool
 
 
 @dataclass
@@ -70,8 +50,22 @@ class Config:
             "train": self.train.__dict__,
         }
 
+    # if in other dict there are keys equal to the keys in self, update them
+    def update(self, other: Dict[str, Any]):
+        for k, v in other.items():
+            if k in self.__dict__:
+                self.__dict__[k] = v
+            if k in self.model.__dict__:
+                self.model.__dict__[k] = v
+            if k in self.train.__dict__:
+                self.train.__dict__[k] = v
+            if k in self.logging.__dict__:
+                self.logging.__dict__[k] = v
+
 
 if __name__ == "__main__":
     config = Config()
     print(config.model.clip_embed_dim)
+    print(config.as_dict())
+    config.update({"epochs": 10, "clip_embed_dim": 100})
     print(config.as_dict())

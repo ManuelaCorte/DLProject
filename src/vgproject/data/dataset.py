@@ -10,9 +10,9 @@ from torchvision.io import read_image
 from torchvision.ops import box_convert
 
 from vgproject.data.process import preprocess
+from vgproject.models.clip import tokenize
 from vgproject.utils.data_types import BatchSample, BboxType, Sample, Split
 from vgproject.utils.misc import transform_sample
-from vgproject.models.clip import tokenize
 
 
 # The Dataset contains samples with an image with a bounding box and a caption associated with the bounding box.
@@ -37,7 +37,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
             device="cuda" if torch.cuda.is_available() else "cpu"
         )
         if preprocessed:
-            preprocess(dir_path, preprocessed_path)
+            preprocess(dir_path, preprocessed_path, output_bbox_type)
             with open(
                 preprocessed_path + f"{self.split.value}_samples.json", "rb"
             ) as samples:
@@ -58,7 +58,6 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
                 Image.open(self.samples[ref_id].image_path),
                 self.samples[ref_id].bounding_box,
                 self.augment,
-                device=self.device,
             )
         else:
             image = read_image(self.samples[ref_id].image_path)

@@ -1,3 +1,4 @@
+import json
 import random
 from typing import Any, Dict, List, Tuple
 
@@ -7,7 +8,7 @@ import numpy as np
 import torch
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
-from torch import Tensor, device
+from torch import Tensor
 
 from .data_types import BatchSample
 
@@ -29,7 +30,6 @@ def transform_sample(
     image: Image.Image,
     box: Tensor,
     augment: bool,
-    device: device,
     target_size: int = 224,
 ) -> Tuple[Tensor, Tensor]:
     if image.mode != "RGB":
@@ -57,7 +57,7 @@ def transform_sample(
                 A.Rotate(limit=20),
                 ToTensorV2(),
             ],
-            bbox_params=A.BboxParams(format="pascal_voc", label_fields=[]),
+            bbox_params=A.BboxParams(format="coco", label_fields=[]),
         )
     else:
         trans = A.Compose(
@@ -75,46 +75,16 @@ def transform_sample(
                 ),
                 ToTensorV2(),
             ],
-            bbox_params=A.BboxParams(format="pascal_voc", label_fields=[]),
+            bbox_params=A.BboxParams(format="coco", label_fields=[]),
         )
 
     transformed_sample: Dict[str, Any] = trans(
         image=np.array(image), bboxes=box.tolist()
     )
 
-    bbox_tensor: Tensor = (
-        torch.tensor(transformed_sample["bboxes"][0], requires_grad=True) / target_size
-    )
+    bbox_tensor: Tensor = torch.tensor(transformed_sample["bboxes"][0]) / target_size
     # print(bbox_tensor)
     return transformed_sample["image"], bbox_tensor.to(torch.float32)
-
-
-# # Save top 5 checkpoints either locally or on wandb
-# class Checkpoint:
-#     def __init__(self, save_locally: bool, wandb: bool) -> None:
-#         self.save_locally = save_locally
-#         self.wandb = wandb
-#         self.top_5_checkpoints: List[Tuple[int, float]] = []
-
-#     def save_checkpoint(
-#         self, model: nn.Module, optimizer: optim.Optimizer, epoch: int, loss: float
-#     ) -> None:
-#         checkpoint: Dict[str, Any] = {
-#             "epoch": epoch,
-#             "model_state_dict": model.state_dict(),
-#             "optimizer_state_dict": optimizer.state_dict(),
-#             "loss": loss,
-#         }
-
-#         if self.save_locally:
-#             torch.save(checkpoint, f"checkpoints/checkpoint_{epoch}.pt")
-#         if self.wandb:
-#             wandb.log_artifact(f"checkpoints/checkpoint_{epoch}.pt")
-
-#         self.top_5_checkpoints.append((epoch, loss))
-#         self.top_5_checkpoints.sort(key=lambda x: x[1])
-#         if len(self.top_5_checkpoints) > 5:
-#             self.top_5_checkpoints.pop(0)
 
 
 def init_torch(seed: int = 41) -> None:
@@ -124,3 +94,15 @@ def init_torch(seed: int = 41) -> None:
     torch.backends.cudnn.deterministic = True
     random.seed(seed)
     np.random.seed(seed)
+
+
+if __name__ == "__main__":
+    train_samples = json.load(open("../data/processed/train_samples.json", "r"))[0]
+
+    print(
+        transform_sample(
+            Image.open(train_samples["image_path"]),
+            torch.tensor(train_samples["bounding_box"]),
+            True,
+        )
+    )
