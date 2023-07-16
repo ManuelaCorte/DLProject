@@ -3,9 +3,12 @@
   "method": "random",
   "metric": { "name": "Validation accuracy", "goal": "maximize" },
   "parameters": {
+    "epochs": 2,
     "batch_size": { "values": [32, 64, 128] },
-    "lr": { "min": 1e-5, "max": 1e-2 },
-    "l": { "min": 0.1, "max": 2.0 },
+    "lr": { "min": 1e-5, "max": 1e-3 },
+    "lr_backbone": { "min": 1e-7, "max": 1e-5 },
+    "l1": { "min": 1.0, "max": 6.0 },
+    "l2": { "min": 1.0, "max": 3.0 },
     "decoder_layers": { "min": 2, "max": 5 },
     "mlp_hidden_dim": { "values": [64, 128, 256] }
   },

@@ -19,9 +19,11 @@
 
   "train": {
     "batch_size": 8,
-    "lr": 0.0001,
+    "lr": 1e-4,
+    "lr_backbone": 1e-6,
     "gamma": 0.8,
-    "l": 1.0,
+    "l1": 5.0,
+    "l2": 2.0,
     "sweep": true
   },
   "logging": {

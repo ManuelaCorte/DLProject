@@ -37,7 +37,7 @@ def eval() -> None:
     checkpoint: Dict[str, Any] = torch.load(cfg.logging["path"])
     model: VGModel = checkpoint["model"]
     model.eval()
-    loss = Loss(0.9)
+    loss = Loss(5, 2)
     losses: List[float] = []
     for batch, gt_bboxes in tqdm(dataloader):
         for sample in batch:
