@@ -31,13 +31,14 @@ class Decoder(nn.Module):
                 nhead=nheads,
                 dim_feedforward=dim_feedforward,
                 batch_first=True,
+                norm_first=True,  # Less prone to vanishing gradients??
                 device=self.device,
-                # norm_first=True,  Less prone to vanishing gradients??
             ),
             num_layers=nlayers,
             norm=nn.LayerNorm(d_model, device=self.device),
         )
         self.reg_token = nn.Parameter(torch.randn(1, 1, d_model)).to(self.device)
+        nn.init.kaiming_normal_(self.reg_token)
 
     def forward(self, vis: Tensor, text: Tensor) -> Tensor:
         text_features: Tensor = self.pos_embedding_1d(text)

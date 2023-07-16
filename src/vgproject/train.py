@@ -5,10 +5,8 @@ import pprint
 from typing import Any, Dict, List, Tuple
 
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from dotenv import load_dotenv
-from torch import Tensor
+from torch import Tensor, nn, optim
 from torch.utils.data import DataLoader
 from torchvision.ops import box_iou
 from tqdm import tqdm
@@ -29,19 +27,34 @@ def train(
     cfg: Config,
 ) -> float:
     # Loss is the weighted sum of the smooth l1 loss and the GIoU
-    loss_func = Loss(1)
+    loss_func = Loss(cfg.train.l1, cfg.train.l2)
     losses_list: List[float] = []
     accuracies_list: List[float] = []
 
     model = VGModel(cfg).train()
-    non_frozen_params: List[nn.Parameter] = [
-        p for p in model.parameters() if p.requires_grad
+
+    # Separate parameters to train
+    backbone_params: List[nn.Parameter] = [
+        p for p in model.pretrained_model.parameters() if p.requires_grad
     ]
-    optimizer = optim.AdamW(non_frozen_params, lr=cfg.train.lr)
+
+    # All parameters except the backbone
+    non_frozen_params: List[nn.Parameter] = [
+        p for p in model.fusion_module.parameters()
+    ]
+    non_frozen_params.extend(model.decoder.parameters())
+    non_frozen_params.extend(model.reg_head.parameters())
+
+    optimizer = optim.AdamW(
+        [
+            {"params": backbone_params, "lr": cfg.train.lr_backbone},
+            {"params": non_frozen_params, "lr": cfg.train.lr},
+        ]
+    )
     lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=cfg.train.gamma)
 
     if cfg.logging.wandb:
-        wandb.watch(model, loss_func, log="all", log_freq=10, log_graph=True)
+        wandb.watch(model, loss_func, log="all", log_freq=100, log_graph=True)
 
     for epoch in tqdm(range(cfg.epochs), desc="Epochs"):
         print("-------------------- Training --------------------------")
@@ -64,7 +77,9 @@ def train(
         if cfg.logging.wandb:
             wandb.log(
                 {
-                    "Validation accuracy": accuracy,
+                    "Epoch": epoch,
+                    "Train loss epoch": epoch_loss,
+                    "Validation accuracy epoch": accuracy,
                 },
                 commit=True,
             )
@@ -92,6 +107,17 @@ def train(
         torch.cuda.empty_cache()
         gc.collect()
 
+    if cfg.train.sweep:
+        print("-------------------- Validation ------------------------")
+        accuracy = validate(val_dataloader, model, device)
+        accuracies_list.append(accuracy)
+        if cfg.logging.wandb:
+            wandb.log(
+                {
+                    "Validation accuracy": accuracy,
+                },
+                commit=True,
+            )
     return sum(accuracies_list) / len(accuracies_list)
 
 
@@ -125,7 +151,7 @@ def train_one_epoch(
         optimizer.zero_grad()
 
         epoch_loss_list.append(batch_loss.detach())
-        if idx % 100 == 0:
+        if (idx * len(batch)) % 5000 == 0:
             report: Dict[str, float] = {
                 "Train loss": batch_loss.detach().item(),
                 "Train accurracy": torch.diagonal(box_iou(out, bbox)).mean().item(),

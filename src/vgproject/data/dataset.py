@@ -99,16 +99,16 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
             ann["bbox"] for ann in instances["annotations"] if ann["id"] == ann_id
         )
         bounding_box: Tensor = tensor([])
-        match self.output_bbox_type:
-            case BboxType.XYXY:
+        match self.output_bbox_type.name:
+            case BboxType.XYXY.name:
                 bounding_box = box_convert(
                     tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYXY.value
                 )
-            case BboxType.XYWH:
+            case BboxType.XYWH.name:
                 bounding_box = box_convert(
                     tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYWH.value
                 )
-            case BboxType.CXCWH:
+            case BboxType.CXCWH.name:
                 bounding_box = box_convert(
                     tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.CXCWH.value
                 )
