@@ -38,7 +38,7 @@ class Decoder(nn.Module):
             norm=nn.LayerNorm(d_model, device=self.device),
         )
         self.reg_token = nn.Parameter(torch.randn(1, 1, d_model)).to(self.device)
-        nn.init.kaiming_normal_(self.reg_token)
+        nn.init.kaiming_normal_(self.reg_token, nonlinearity="relu", mode="fan_out")
 
     def forward(self, vis: Tensor, text: Tensor) -> Tensor:
         text_features: Tensor = self.pos_embedding_1d(text)
@@ -76,6 +76,7 @@ class PositionalEncoding1D(nn.Module):
 
         self.register_buffer("text_pos_encoding", self.pos_encoding)
 
+    @torch.no_grad()
     def forward(self, token_embedding: Tensor) -> Tensor:
         out = self.dropout(
             token_embedding + self.pos_encoding[: token_embedding.size(1), :]
@@ -118,6 +119,9 @@ class PositionalEncoding2D(nn.Module):
             torch.cos(pos_h * div_term).transpose(0, 1).unsqueeze(2).repeat(1, 1, width)
         )
 
+        self.register_buffer("visual_pos_encoding", self.pe)
+
+    @torch.no_grad()
     def forward(self, x):
         x = x + self.pe[:, : x.size(1)]
         return self.dropout(x)
