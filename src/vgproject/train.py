@@ -45,13 +45,18 @@ def train(
     non_frozen_params.extend(model.decoder.parameters())
     non_frozen_params.extend(model.reg_head.parameters())
 
-    optimizer = optim.AdamW(
+    optimizer = optim.Adam(
         [
             {"params": backbone_params, "lr": cfg.train.lr_backbone},
             {"params": non_frozen_params, "lr": cfg.train.lr},
         ]
     )
-    lr_scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=cfg.train.gamma)
+    lr_scheduler = optim.lr_scheduler.OneCycleLR(
+        optimizer=optimizer,
+        max_lr=[cfg.train.lr_backbone, cfg.train.lr * 100],
+        epochs=cfg.epochs,
+        steps_per_epoch=len(train_dataloader),
+    )
 
     if cfg.logging.wandb:
         wandb.watch(model, loss_func, log="all", log_freq=100, log_graph=True)
@@ -64,6 +69,7 @@ def train(
             model=model,
             loss=loss_func,
             optimizer=optimizer,
+            scheduler=lr_scheduler,
             device=device,
             cfg=cfg,
         )
@@ -101,7 +107,7 @@ def train(
                 f=f"{dir}model{epoch}.pth",
             )
 
-            if cfg.logging.wandb:
+            if cfg.logging.wandb and not cfg.train.sweep:
                 wandb.save(f"{dir}model{epoch}.pth")
 
         torch.cuda.empty_cache()
@@ -127,6 +133,7 @@ def train_one_epoch(
     model: VGModel,
     loss: Loss,
     optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.OneCycleLR,
     device: torch.device,
     cfg: Config,
 ) -> Tensor:
@@ -134,6 +141,7 @@ def train_one_epoch(
     epoch_loss_list: List[Tensor] = []
 
     for idx, (batch, bbox) in enumerate(tqdm(dataloader, desc="Batches")):
+        optimizer.zero_grad()
         # Move to gpu
         for sample in batch:
             sample = sample.to(device)
@@ -148,10 +156,10 @@ def train_one_epoch(
         # Backward pass
         batch_loss.backward()
         optimizer.step()
-        optimizer.zero_grad()
+        scheduler.step()
 
         epoch_loss_list.append(batch_loss.detach())
-        if (idx * len(batch)) % 5000 == 0:
+        if (idx * len(batch)) % 4096 == 0:
             report: Dict[str, float] = {
                 "Train loss": batch_loss.detach().item(),
                 "Train accurracy": torch.diagonal(box_iou(out, bbox)).mean().item(),

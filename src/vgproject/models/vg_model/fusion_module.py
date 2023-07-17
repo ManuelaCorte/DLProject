@@ -12,6 +12,7 @@ class FusionModule(nn.Module):
         self.text_projection = nn.Sequential(
             nn.Linear(in_features=clip_emb_dim, out_features=clip_emb_dim), nn.ReLU()
         ).to(self.device)
+
         self.vis_l4_projection = _conv_layer(
             input_dim=clip_emb_dim,
             output_dim=clip_emb_dim,
@@ -95,7 +96,7 @@ def _conv_layer(
     padding: int,
     device: device,
 ) -> nn.Sequential:
-    return nn.Sequential(
+    module = nn.Sequential(
         nn.Conv2d(
             in_channels=input_dim,
             out_channels=output_dim,
@@ -106,3 +107,5 @@ def _conv_layer(
         nn.BatchNorm2d(output_dim, device=device),
         nn.ReLU(),
     )
+    nn.init.xavier_uniform_(module[0].weight)
+    return module
