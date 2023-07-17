@@ -4,8 +4,7 @@ from typing import List, Union
 import pkg_resources as p
 import torch
 from PIL import Image
-from torchvision.transforms import (CenterCrop, Compose, Normalize, Resize,
-                                    ToTensor)
+from torchvision.transforms import CenterCrop, Compose, Normalize, Resize, ToTensor
 
 from .simple_tokenizer import SimpleTokenizer as _Tokenizer
 
