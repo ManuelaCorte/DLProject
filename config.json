@@ -1,6 +1,6 @@
 {
   "dataset_path": "../data/raw/refcocog/",
-  "epochs": 10,
+  "epochs": 30,
 
   "model": {
     "clip_embed_dim": 1024,
@@ -18,13 +18,13 @@
   },
 
   "train": {
-    "batch_size": 8,
-    "lr": 1e-4,
+    "batch_size": 128,
+    "lr": 1e-5,
     "lr_backbone": 1e-6,
     "gamma": 0.8,
     "l1": 5.0,
     "l2": 2.0,
-    "sweep": true
+    "sweep": false
   },
   "logging": {
     "path": "../runs/",
