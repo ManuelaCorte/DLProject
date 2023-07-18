@@ -1,22 +1,23 @@
 import gc
 import json
 import os
-import pprint
+from pprint import pprint
 from typing import Any, Dict, List, Tuple
 
 import torch
 from dotenv import load_dotenv
 from torch import Tensor, nn, optim
 from torch.utils.data import DataLoader
-from torchvision.ops import box_iou
 from tqdm import tqdm
 
 import wandb
 from vgproject.data.dataset import VGDataset
 from vgproject.metrics.loss import Loss
+from vgproject.metrics.metrics import Metric, MetricsLogger
 from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, BboxType, Split
+from vgproject.utils.engines import train_one_epoch, validate
 from vgproject.utils.misc import custom_collate, init_torch
 
 
@@ -25,13 +26,14 @@ def train(
     val_dataloader: DataLoader[Tuple[BatchSample, Tensor]],
     device: torch.device,
     cfg: Config,
-) -> float:
+) -> Tuple[MetricsLogger, MetricsLogger]:
+    train_metrics: MetricsLogger = MetricsLogger()
+    val_metrics: MetricsLogger = MetricsLogger()
+
     # Loss is the weighted sum of the smooth l1 loss and the GIoU
     loss_func = Loss(cfg.train.l1, cfg.train.l2)
-    losses_list: List[float] = []
-    accuracies_list: List[float] = []
 
-    model = VGModel(cfg).train()
+    model: VGModel = VGModel(cfg).train()
 
     # Separate parameters to train
     backbone_params: List[nn.Parameter] = [
@@ -39,21 +41,20 @@ def train(
     ]
 
     # All parameters except the backbone
-    non_frozen_params: List[nn.Parameter] = [
-        p for p in model.fusion_module.parameters()
-    ]
+    non_frozen_params: List[nn.Parameter] = []
+    non_frozen_params.extend(model.fusion_module.parameters())
     non_frozen_params.extend(model.decoder.parameters())
     non_frozen_params.extend(model.reg_head.parameters())
-
-    optimizer = optim.Adam(
-        [
-            {"params": backbone_params, "lr": cfg.train.lr_backbone},
-            {"params": non_frozen_params, "lr": cfg.train.lr},
+    print(len(backbone_params), len(non_frozen_params))
+    optimizer = optim.AdamW(
+        params=[
+            {"params": backbone_params, "lr": cfg.train.lr_backbone, "weight_decay": 0},
+            {"params": non_frozen_params, "lr": cfg.train.lr, "weight_decay": 1e-4},
         ]
     )
     lr_scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer=optimizer,
-        max_lr=[cfg.train.lr_backbone, cfg.train.lr * 100],
+        max_lr=[cfg.train.lr_backbone, cfg.train.lr],
         epochs=cfg.epochs,
         steps_per_epoch=len(train_dataloader),
     )
@@ -63,7 +64,7 @@ def train(
 
     for epoch in tqdm(range(cfg.epochs), desc="Epochs"):
         print("-------------------- Training --------------------------")
-        epoch_loss = train_one_epoch(
+        epoch_train_metrics: Dict[Metric, float] = train_one_epoch(
             epoch=epoch,
             dataloader=train_dataloader,
             model=model,
@@ -73,23 +74,46 @@ def train(
             device=device,
             cfg=cfg,
         )
-        losses_list.append(epoch_loss.item())
-        lr_scheduler.step()
+        train_metrics.update_metric(epoch_train_metrics)
+        print("Training metrics at epoch ", epoch)
+        pprint(epoch_train_metrics)
 
         # Evaluate on validation set for hyperparameter tuning
         print("-------------------- Validation ------------------------")
-        accuracy = validate(val_dataloader, model, device)
-        accuracies_list.append(accuracy)
+        epoch_val_metrics: Dict[Metric, float] = validate(
+            val_dataloader, model, loss_func, device
+        )
+        val_metrics.update_metric(epoch_val_metrics)
+        print("Validation metrics at epoch ", epoch)
+        pprint(epoch_val_metrics)
+
+        # Log metrics to wandb putting train and val metrics together
         if cfg.logging.wandb:
             wandb.log(
                 {
-                    "Epoch": epoch,
-                    "Train loss epoch": epoch_loss,
-                    "Validation accuracy epoch": accuracy,
+                    "Loss": {
+                        "train": epoch_train_metrics[Metric.LOSS],
+                        "val": epoch_val_metrics[Metric.LOSS],
+                    },
+                    "Average IOU": {
+                        "train": epoch_train_metrics[Metric.IOU],
+                        "val": epoch_val_metrics[Metric.IOU],
+                    },
+                    "Accuracy@50": {
+                        "train": epoch_train_metrics[Metric.ACCURACY_50],
+                        "val": epoch_val_metrics[Metric.ACCURACY_50],
+                    },
+                    "Accuracy@75": {
+                        "train": epoch_train_metrics[Metric.ACCURACY_75],
+                        "val": epoch_val_metrics[Metric.ACCURACY_75],
+                    },
+                    "Accuracy@90": {
+                        "train": epoch_train_metrics[Metric.ACCURACY_90],
+                        "val": epoch_val_metrics[Metric.ACCURACY_90],
+                    },
                 },
                 commit=True,
             )
-        print(f"Accuracy: {accuracy} at epoch {epoch}")
 
         # Save model after each epoch
         if cfg.logging.save:
@@ -102,96 +126,15 @@ def train(
                     "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-                    "loss": epoch_loss,
+                    "loss": epoch_train_metrics[Metric.LOSS],
                 },
                 f=f"{dir}model{epoch}.pth",
             )
 
-            if cfg.logging.wandb and not cfg.train.sweep:
-                wandb.save(f"{dir}model{epoch}.pth")
-
         torch.cuda.empty_cache()
         gc.collect()
 
-    if cfg.train.sweep:
-        print("-------------------- Validation ------------------------")
-        accuracy = validate(val_dataloader, model, device)
-        accuracies_list.append(accuracy)
-        if cfg.logging.wandb:
-            wandb.log(
-                {
-                    "Validation accuracy": accuracy,
-                },
-                commit=True,
-            )
-    return sum(accuracies_list) / len(accuracies_list)
-
-
-def train_one_epoch(
-    epoch: int,
-    dataloader: DataLoader[Tuple[BatchSample, Tensor]],
-    model: VGModel,
-    loss: Loss,
-    optimizer: torch.optim.Optimizer,
-    scheduler: torch.optim.lr_scheduler.OneCycleLR,
-    device: torch.device,
-    cfg: Config,
-) -> Tensor:
-    # As loss we take smooth_l1 + GIoU
-    epoch_loss_list: List[Tensor] = []
-
-    for idx, (batch, bbox) in enumerate(tqdm(dataloader, desc="Batches")):
-        optimizer.zero_grad()
-        # Move to gpu
-        for sample in batch:
-            sample = sample.to(device)
-        bbox = bbox.to(device)
-
-        # Forward pass
-        out: Tensor = model(batch)
-
-        # Loss and metrics
-        batch_loss: Tensor = loss.compute(out, bbox)
-
-        # Backward pass
-        batch_loss.backward()
-        optimizer.step()
-        scheduler.step()
-
-        epoch_loss_list.append(batch_loss.detach())
-        if (idx * len(batch)) % 4096 == 0:
-            report: Dict[str, float] = {
-                "Train loss": batch_loss.detach().item(),
-                "Train accurracy": torch.diagonal(box_iou(out, bbox)).mean().item(),
-            }
-            if cfg.logging.wandb:
-                wandb.log(report, commit=True)
-            pprint.pprint(f"Batches: {idx}, {report}")
-
-    return torch.stack(epoch_loss_list).mean()
-
-
-@torch.no_grad()
-def validate(
-    dataloader: DataLoader[Tuple[BatchSample, Tensor]],
-    model: VGModel,
-    device: torch.device,
-) -> float:
-    # As accuracy we take the average IoU
-    model.eval()
-    accuracy_list: List[Tensor] = []
-    for batch, bbox in tqdm(dataloader, desc="Batches"):
-        # Move to gpu
-        for sample in batch:
-            sample.to(device)
-        bbox = bbox.to(device)
-
-        # Forward pass
-        out: Tensor = model(batch)
-
-        accuracy_list.append(torch.diagonal(box_iou(out, bbox)).mean())
-
-    return torch.stack(accuracy_list).mean().item()
+    return train_metrics, val_metrics
 
 
 def initialize_run(sweep: bool = True) -> None:
@@ -244,7 +187,11 @@ def initialize_run(sweep: bool = True) -> None:
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train(train_dataloader, val_dataloader, device, config)
+
+    train_metrics, val_metrics = train(train_dataloader, val_dataloader, device, config)
+
+    json.dump(train_metrics.metrics, open("../train_metrics.json", "w"))
+    json.dump(val_metrics.metrics, open("../val_metrics.json", "w"))
 
     if config.logging.wandb:
         wandb.finish()
