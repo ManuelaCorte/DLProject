@@ -5,10 +5,12 @@ from typing import Dict, List
 
 @dataclass(frozen=True)
 class Metric(Enum):
-    ACCURACY = "accuracy"  # IoU > 0.5 -> 1 else 0
+    LOSS = "loss"
+    ACCURACY_50 = "accuracy"  # IoU > 0.5 -> 1 else 0
+    ACCURACY_75 = "accuracy75"  # IoU > 0.75 -> 1 else 0
+    ACCURACY_90 = "accuracy90"  # IoU > 0.9 -> 1 else 0
     IOU = "iou"
     COSINE_SIMILARITY = "cosine_similarity"
-    CLIP_SCORE = "clip_score"  # max(100 * cos(E_I, E_C), 0)
 
 
 @dataclass(frozen=True)
@@ -19,19 +21,31 @@ class Reduction(Enum):
 
 
 class MetricsLogger:
-    def __init__(self) -> None:
+    def __init__(self, metrics: Dict[Metric, List[float]] | None = None) -> None:
         self.metrics: Dict[Metric, List[float]] = {}
-
-    def update_metric(self, metric: Metric, value: float) -> None:
-        if metric in self.metrics:
-            self.metrics[metric].append(value)
+        if metrics is None:
+            for metric in Metric:
+                self.metrics[metric] = []
         else:
-            self.metrics[metric] = [value]
+            self.metrics = metrics
+
+    def update_metric(self, metrics: Dict[Metric, float]) -> None:
+        for metric, value in metrics.items():
+            self.metrics[metric].append(value)
 
     def get_metric(
-        self, metric: Metric, reduction: Reduction = Reduction.MEAN
-    ) -> float:
-        raise NotImplementedError
+        self, metric: Metric, red: Reduction = Reduction.NONE
+    ) -> float | List[float]:
+        values: List[float] = self.metrics[metric]
+        match red.name:
+            case Reduction.MEAN.name:
+                return sum(values) / len(values)
+            case Reduction.SUM.name:
+                return sum(values)
+            case Reduction.NONE.name:
+                return values
+            case _:
+                raise ValueError(f"Reduction {red.name} doesn't exists")
 
     def __str__(self) -> str:
         res = "Metrics:\n"

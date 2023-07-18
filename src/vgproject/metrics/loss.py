@@ -12,10 +12,11 @@ class Loss:
         self.loss: Tensor
 
     def compute(self, prediction: Tensor, gt_bbox: Tensor) -> Tensor:
-        bbox = box_convert(prediction, in_fmt="xywh", out_fmt="xyxy")
-        self.loss = self.l1 * self.l1_loss(gt_bbox, bbox) + self.l2 * self.giou_loss(
-            gt_bbox, bbox, reduction="mean"
-        )
+        prediction = box_convert(prediction, in_fmt="xywh", out_fmt="xyxy")
+        gt_bbox = box_convert(gt_bbox, in_fmt="xywh", out_fmt="xyxy")
+        self.loss = self.l1 * self.l1_loss(
+            gt_bbox, prediction
+        ) + self.l2 * self.giou_loss(gt_bbox, prediction, reduction="mean")
         return self.loss
 
     def to_float(self) -> float:
