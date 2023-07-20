@@ -1,7 +1,9 @@
-from typing import List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
+from matplotlib.lines import Line2D
 from torch import Tensor, nn, optim
 from torch.utils.data import DataLoader
 from torch_lr_finder import LRFinder  # type: ignore
@@ -115,5 +117,61 @@ def find_lr() -> None:
     plt.show()
 
 
+def plot_grad_flow(named_parameters: Iterator[Tuple[str, nn.Parameter]]) -> None:
+    """Plots the gradients flowing through different layers in the net during training.
+    Can be used for checking for possible gradient vanishing / exploding problems.
+
+    Usage: Plug this function in Trainer class after loss.backwards() as
+    "plot_grad_flow(self.model.named_parameters())" to visualize the gradient flow"""
+    ave_grads = []
+    max_grads = []
+    layers = []
+    for n, p in named_parameters:
+        if (p.requires_grad) and ("bias" not in n):
+            if p.grad is None:
+                raise RuntimeError(f"Gradient of {n} is None")
+            layers.append(n)
+            ave_grads.append(p.grad.abs().mean().item())
+            max_grads.append(p.grad.abs().max().item())
+    plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.1, lw=1, color="c")
+    plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.1, lw=1, color="b")
+    plt.hlines(0, 0, len(ave_grads) + 1, lw=2, color="k")
+    plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
+    plt.xlim(left=0, right=len(ave_grads))
+    plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
+    plt.legend(
+        [
+            Line2D([0], [0], color="c", lw=4),
+            Line2D([0], [0], color="b", lw=4),
+            Line2D([0], [0], color="k", lw=4),
+        ],
+        ["max-gradient", "mean-gradient", "zero-gradient"],
+    )
+
+
 if __name__ == "__main__":
-    find_lr()
+    config = Config()
+
+    model = VGModel(config).train()
+    train_dataset: VGDataset = VGDataset(
+        dir_path=config.dataset_path,
+        split=Split.TRAIN,
+        output_bbox_type=BboxType.XYWH,
+        augment=True,
+        preprocessed=True,
+    )
+    train_dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
+        dataset=train_dataset,
+        batch_size=config.train.batch_size,
+        collate_fn=custom_collate,
+        num_workers=2,
+        shuffle=True,
+        drop_last=True,
+    )
+    for batch, bbox in train_dataloader:
+        visualize_network(model, batch)
+        break

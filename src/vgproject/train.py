@@ -1,7 +1,6 @@
 import gc
 import json
 import os
-from pprint import pprint
 from typing import Any, Dict, List, Tuple
 
 import torch
@@ -40,11 +39,10 @@ def train(
         p for p in model.pretrained_model.parameters() if p.requires_grad
     ]
 
-    # All parameters except the backbone
-    non_frozen_params: List[nn.Parameter] = []
-    non_frozen_params.extend(model.fusion_module.parameters())
-    non_frozen_params.extend(model.decoder.parameters())
-    non_frozen_params.extend(model.reg_head.parameters())
+    # All parameters except the backbone parameters
+    non_frozen_params = [
+        p for p in set(model.parameters()) - set(model.pretrained_model.parameters())
+    ]
     print(len(backbone_params), len(non_frozen_params))
     optimizer = optim.AdamW(
         params=[
@@ -76,7 +74,7 @@ def train(
         )
         train_metrics.update_metric(epoch_train_metrics)
         print("Training metrics at epoch ", epoch)
-        pprint(epoch_train_metrics)
+        print(epoch_train_metrics)
 
         # Evaluate on validation set for hyperparameter tuning
         print("-------------------- Validation ------------------------")
@@ -85,7 +83,7 @@ def train(
         )
         val_metrics.update_metric(epoch_val_metrics)
         print("Validation metrics at epoch ", epoch)
-        pprint(epoch_val_metrics)
+        print(epoch_val_metrics)
 
         # Log metrics to wandb putting train and val metrics together
         if cfg.logging.wandb:

@@ -12,6 +12,7 @@ from vgproject.metrics.metrics import Metric
 from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample
+from vgproject.utils.visualization import plot_grad_flow
 
 
 def train_one_epoch(
@@ -46,6 +47,8 @@ def train_one_epoch(
 
         # Backward pass
         batch_loss.backward()
+        plot_grad_flow(model.named_parameters())
+
         optimizer.step()
         scheduler.step()
 
@@ -67,11 +70,11 @@ def train_one_epoch(
             pprint(f"Batches: {idx}, {report}")
 
     return {
-        Metric.LOSS: torch.stack(loss_list).mean().item(),
-        Metric.IOU: torch.stack(iou_list).mean().item(),
-        Metric.ACCURACY_50: torch.stack(acc_50).mean().item(),
-        Metric.ACCURACY_75: torch.stack(acc_75).mean().item(),
-        Metric.ACCURACY_90: torch.stack(acc_90).mean().item(),
+        Metric.LOSS: torch.stack(loss_list, dim=1).mean().item(),
+        Metric.IOU: torch.stack(iou_list, dim=1).mean().item(),
+        Metric.ACCURACY_50: torch.stack(acc_50, dim=1).mean().item(),
+        Metric.ACCURACY_75: torch.stack(acc_75, dim=1).mean().item(),
+        Metric.ACCURACY_90: torch.stack(acc_90, dim=1).mean().item(),
     }
 
 

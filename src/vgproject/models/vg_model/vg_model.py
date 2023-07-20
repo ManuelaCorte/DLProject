@@ -42,6 +42,7 @@ class VGModel(nn.Module):
         self.fusion_module: FusionModule = FusionModule(
             embed_dim, cfg.model.clip_embed_dim, cfg.model.proj_img_size
         ).to(self.device)
+
         self.decoder: Decoder = Decoder(
             embed_dim,
             cfg.model.proj_img_size,
@@ -72,10 +73,10 @@ class VGModel(nn.Module):
         )
 
         # Transformer decoder
-        reg_token = self.decoder(fused_visual_features, text_sequence)
+        reg_token: Tensor = self.decoder(fused_visual_features, text_sequence)
 
         # Regression head
-        out = self.reg_head(reg_token)
+        out: Tensor = self.reg_head(reg_token)
         return out
 
 
@@ -84,6 +85,7 @@ class MLP(nn.Module):
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, hidden_dim_1),
+            nn.BatchNorm1d(hidden_dim_1),
             nn.ReLU(),
             nn.Linear(hidden_dim_1, output_dim),
         )
