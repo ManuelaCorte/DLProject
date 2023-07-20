@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
-from torch import Tensor
+from torch import Tensor, nn
 
 from .data_types import BatchSample
 
@@ -106,3 +106,7 @@ if __name__ == "__main__":
             True,
         )
     )
+
+
+def count_parameters(model: nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

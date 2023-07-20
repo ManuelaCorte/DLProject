@@ -50,8 +50,9 @@ class Decoder(nn.Module):
         visual_features = torch.cat(
             [self.reg_token.expand((vis.shape[0], -1, -1)), visual_features], dim=1
         )
-        x = self.decoder(visual_features, text_features)
-        return x[:, 0, :]
+        x: Tensor = self.decoder(visual_features, text_features)
+        reg_token: Tensor = x[:, 0, :]
+        return reg_token
 
 
 # Positional encodings implemented in separate classes if we want to change them and use learnable positional encodings instead
@@ -76,7 +77,6 @@ class PositionalEncoding1D(nn.Module):
 
         self.register_buffer("text_pos_encoding", self.pos_encoding)
 
-    @torch.no_grad()
     def forward(self, token_embedding: Tensor) -> Tensor:
         out = self.dropout(
             token_embedding + self.pos_encoding[: token_embedding.size(1), :]
@@ -121,7 +121,6 @@ class PositionalEncoding2D(nn.Module):
 
         self.register_buffer("visual_pos_encoding", self.pe)
 
-    @torch.no_grad()
     def forward(self, x):
         x = x + self.pe[:, : x.size(1)]
         return self.dropout(x)
