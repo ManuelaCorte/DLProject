@@ -24,7 +24,7 @@ def train_one_epoch(
     scheduler: optim.lr_scheduler.OneCycleLR,
     device: device,
     cfg: Config,
-) -> Dict[Metric, float]:
+) -> Dict[str, float]:
     model.train()
     loss_list: List[Tensor] = []
     iou_list: List[Tensor] = []
@@ -43,7 +43,9 @@ def train_one_epoch(
         out: Tensor = model(batch)
 
         # Loss and metrics
-        batch_loss: Tensor = loss.compute(out, bbox)
+        out_xyxy = box_convert(out, in_fmt="xywh", out_fmt="xyxy").detach()
+        bbox_xyxy = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy").detach()
+        batch_loss: Tensor = loss.compute(out_xyxy, bbox_xyxy)
 
         # Backward pass
         batch_loss.backward()
@@ -52,9 +54,7 @@ def train_one_epoch(
         optimizer.step()
         scheduler.step()
 
-        out = box_convert(out, in_fmt="xywh", out_fmt="xyxy").detach()
-        bbox = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy").detach()
-        batch_iou: Tensor = torch.diagonal(box_iou(out, bbox))
+        batch_iou: Tensor = torch.diagonal(box_iou(out_xyxy, bbox_xyxy))
 
         loss_list.append(batch_loss.detach())
         iou_list.append(batch_iou.mean())
@@ -70,11 +70,11 @@ def train_one_epoch(
             pprint(f"Batches: {idx}, {report}")
 
     return {
-        Metric.LOSS: torch.stack(loss_list, dim=1).mean().item(),
-        Metric.IOU: torch.stack(iou_list, dim=1).mean().item(),
-        Metric.ACCURACY_50: torch.stack(acc_50, dim=1).mean().item(),
-        Metric.ACCURACY_75: torch.stack(acc_75, dim=1).mean().item(),
-        Metric.ACCURACY_90: torch.stack(acc_90, dim=1).mean().item(),
+        Metric.LOSS.value: torch.stack(loss_list).mean().item(),
+        Metric.IOU.value: torch.stack(iou_list).mean().item(),
+        Metric.ACCURACY_50.value: torch.stack(acc_50).mean().item(),
+        Metric.ACCURACY_75.value: torch.stack(acc_75).mean().item(),
+        Metric.ACCURACY_90.value: torch.stack(acc_90).mean().item(),
     }
 
 
@@ -84,7 +84,7 @@ def validate(
     model: VGModel,
     loss: Loss,
     device: torch.device,
-) -> Dict[Metric, float]:
+) -> Dict[str, float]:
     # As accuracy we take the average IoU
     model.eval()
     loss_list: List[Tensor] = []
@@ -115,11 +115,11 @@ def validate(
         acc_90.append(accuracy(batch_iou, 0.9))
 
     return {
-        Metric.LOSS: torch.stack(loss_list).mean().item(),
-        Metric.IOU: torch.stack(iou_list).mean().item(),
-        Metric.ACCURACY_50: torch.stack(acc_50).mean().item(),
-        Metric.ACCURACY_75: torch.stack(acc_75).mean().item(),
-        Metric.ACCURACY_90: torch.stack(acc_90).mean().item(),
+        Metric.LOSS.value: torch.stack(loss_list).mean().item(),
+        Metric.IOU.value: torch.stack(iou_list).mean().item(),
+        Metric.ACCURACY_50.value: torch.stack(acc_50).mean().item(),
+        Metric.ACCURACY_75.value: torch.stack(acc_75).mean().item(),
+        Metric.ACCURACY_90.value: torch.stack(acc_90).mean().item(),
     }
 
 

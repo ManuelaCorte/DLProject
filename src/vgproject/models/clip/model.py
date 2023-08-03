@@ -95,17 +95,6 @@ class AttentionPool2d(nn.Module):
         pos_embed_weight = pos_embed_weight.permute(0, 2, 1)
         return pos_embed_weight
 
-        # pos_embed_weight = pos_embed_weight.reshape(
-        #     1, pos_h, pos_w, pos_embed.shape[2]
-        # ).permute(
-        #     0, 3, 1, 2
-        # )  # 1 C H W
-        # # pos_embed_weight_int = F.interpolate(
-        # #     pos_embed_weight, size=input_shape, align_corners=False, mode="bicubic"
-        # # )
-        # pos_embed_weight = torch.flatten(pos_embed_weight, 2).transpose(1, 2)  # 1 HW C
-        # return pos_embed_weight.transpose(-2, -1)  # 1 C HW
-
     def forward(self, x):
         B, C, H, W = x.size()
         # Residual connection
@@ -221,12 +210,11 @@ class ModifiedResNet(nn.Module):
             x4: Tensor = self.layer4(x3)
 
         x_pooled: Tensor = self.attnpool(x4)
-
         return (
             x2,
             x3,
             x_pooled,
-        )  # B 512 H/8 W/8 (B, 1024, H/16, W/16) (B, 1024, H/32, W/32)
+        )  # (B 512 H/8 W/8) (B, 1024, H/16, W/16) (B, 1024, H/32, W/32)
 
 
 class LayerNorm(nn.LayerNorm):

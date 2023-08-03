@@ -21,10 +21,9 @@
     "batch_size": 128,
     "lr": 1e-3,
     "lr_backbone": 1e-5,
-    "gamma": 0.8,
     "l1": 5.0,
     "l2": 2.0,
-    "sweep": false
+    "sweep": true
   },
   "logging": {
     "path": "../runs/",

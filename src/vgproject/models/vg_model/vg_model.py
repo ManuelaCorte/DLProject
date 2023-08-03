@@ -9,7 +9,7 @@ from vgproject.data.dataset import VGDataset
 from vgproject.models.clip.model import CLIP, build_model
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, BboxType, Split
-from vgproject.utils.misc import custom_collate
+from vgproject.utils.misc import count_parameters, custom_collate
 
 from .decoder import Decoder
 from .fusion_module import FusionModule
@@ -37,7 +37,7 @@ class VGModel(nn.Module):
         # Freeze all clip parameters except the attention pooling layer
         for param in self.pretrained_model.parameters():
             param.requires_grad = False
-        self.pretrained_model.visual.attnpool.requires_grad_(True)
+        # self.pretrained_model.visual.attnpool.requires_grad_(True)
 
         self.fusion_module: FusionModule = FusionModule(
             embed_dim, cfg.model.clip_embed_dim, cfg.model.proj_img_size
@@ -111,6 +111,7 @@ if __name__ == "__main__":
         drop_last=True,
     )
     test = VGModel(cfg)
+    print(count_parameters(test))
     for batch, bbox in dataloader:
         out = test(batch)
         print(out, bbox)
