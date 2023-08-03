@@ -1,6 +1,6 @@
 import torch.nn as nn
 from torch import Tensor
-from torchvision.ops import box_convert, generalized_box_iou_loss
+from torchvision.ops import generalized_box_iou_loss
 
 
 class Loss:
@@ -11,9 +11,8 @@ class Loss:
         self.l2: float = l2
         self.loss: Tensor
 
+    # Both bounding boxex tensors are in xyxy format
     def compute(self, prediction: Tensor, gt_bbox: Tensor) -> Tensor:
-        prediction = box_convert(prediction, in_fmt="xywh", out_fmt="xyxy")
-        gt_bbox = box_convert(gt_bbox, in_fmt="xywh", out_fmt="xyxy")
         self.loss = self.l1 * self.l1_loss(
             gt_bbox, prediction
         ) + self.l2 * self.giou_loss(gt_bbox, prediction, reduction="mean")

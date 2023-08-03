@@ -21,7 +21,6 @@ class Train:
     batch_size: int
     lr: float
     lr_backbone: float
-    gamma: float
     l1: float
     l2: float
     sweep: bool

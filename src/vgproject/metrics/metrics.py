@@ -21,22 +21,22 @@ class Reduction(Enum):
 
 
 class MetricsLogger:
-    def __init__(self, metrics: Dict[Metric, List[float]] | None = None) -> None:
-        self.metrics: Dict[Metric, List[float]] = {}
+    def __init__(self, metrics: Dict[str, List[float]] | None = None) -> None:
+        self.metrics: Dict[str, List[float]] = {}
         if metrics is None:
             for metric in Metric:
-                self.metrics[metric] = []
+                self.metrics[metric.value] = []
         else:
             self.metrics = metrics
 
-    def update_metric(self, metrics: Dict[Metric, float]) -> None:
+    def update_metric(self, metrics: Dict[str, float]) -> None:
         for metric, value in metrics.items():
             self.metrics[metric].append(value)
 
     def get_metric(
         self, metric: Metric, red: Reduction = Reduction.NONE
     ) -> float | List[float]:
-        values: List[float] = self.metrics[metric]
+        values: List[float] = self.metrics[metric.value]
         match red.name:
             case Reduction.MEAN.name:
                 return sum(values) / len(values)
@@ -50,5 +50,5 @@ class MetricsLogger:
     def __str__(self) -> str:
         res = "Metrics:\n"
         for metric, values in self.metrics.items():
-            res += f"{metric.value}: {sum(values) / len(values)}\n"
+            res += f"{metric}: {sum(values) / len(values)}\n"
         return res

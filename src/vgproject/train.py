@@ -62,7 +62,7 @@ def train(
 
     for epoch in tqdm(range(cfg.epochs), desc="Epochs"):
         print("-------------------- Training --------------------------")
-        epoch_train_metrics: Dict[Metric, float] = train_one_epoch(
+        epoch_train_metrics: Dict[str, float] = train_one_epoch(
             epoch=epoch,
             dataloader=train_dataloader,
             model=model,
@@ -78,7 +78,7 @@ def train(
 
         # Evaluate on validation set for hyperparameter tuning
         print("-------------------- Validation ------------------------")
-        epoch_val_metrics: Dict[Metric, float] = validate(
+        epoch_val_metrics: Dict[str, float] = validate(
             val_dataloader, model, loss_func, device
         )
         val_metrics.update_metric(epoch_val_metrics)
@@ -90,24 +90,24 @@ def train(
             wandb.log(
                 {
                     "Loss": {
-                        "train": epoch_train_metrics[Metric.LOSS],
-                        "val": epoch_val_metrics[Metric.LOSS],
+                        "train": epoch_train_metrics[Metric.LOSS.value],
+                        "val": epoch_val_metrics[Metric.LOSS.value],
                     },
                     "Average IOU": {
-                        "train": epoch_train_metrics[Metric.IOU],
-                        "val": epoch_val_metrics[Metric.IOU],
+                        "train": epoch_train_metrics[Metric.IOU.value],
+                        "val": epoch_val_metrics[Metric.IOU.value],
                     },
                     "Accuracy@50": {
-                        "train": epoch_train_metrics[Metric.ACCURACY_50],
-                        "val": epoch_val_metrics[Metric.ACCURACY_50],
+                        "train": epoch_train_metrics[Metric.ACCURACY_50.value],
+                        "val": epoch_val_metrics[Metric.ACCURACY_50.value],
                     },
                     "Accuracy@75": {
-                        "train": epoch_train_metrics[Metric.ACCURACY_75],
-                        "val": epoch_val_metrics[Metric.ACCURACY_75],
+                        "train": epoch_train_metrics[Metric.ACCURACY_75.value],
+                        "val": epoch_val_metrics[Metric.ACCURACY_75.value],
                     },
                     "Accuracy@90": {
-                        "train": epoch_train_metrics[Metric.ACCURACY_90],
-                        "val": epoch_val_metrics[Metric.ACCURACY_90],
+                        "train": epoch_train_metrics[Metric.ACCURACY_90.value],
+                        "val": epoch_val_metrics[Metric.ACCURACY_90.value],
                     },
                 },
                 commit=True,
@@ -124,7 +124,7 @@ def train(
                     "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
                     "lr_scheduler_state_dict": lr_scheduler.state_dict(),
-                    "loss": epoch_train_metrics[Metric.LOSS],
+                    "loss": epoch_train_metrics[Metric.LOSS.value],
                 },
                 f=f"{dir}model{epoch}.pth",
             )
