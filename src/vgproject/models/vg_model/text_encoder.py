@@ -1,8 +1,9 @@
 from typing import Callable, Tuple
-from clip.model import CLIP
+
 import clip
 import torch
 import torch.nn as nn
+from clip.model import CLIP
 from torch import Tensor
 
 from vgproject.utils.config import Config

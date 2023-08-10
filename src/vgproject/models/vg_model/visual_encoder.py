@@ -1,8 +1,9 @@
-from typing import Any, Callable, OrderedDict
-from clip.model import ModifiedResNet
+from typing import Any, Callable, OrderedDict, Tuple
+
 import clip
 import torch
 import torch.nn as nn
+from clip.model import ModifiedResNet
 from torch import Tensor
 
 
@@ -30,10 +31,14 @@ class VisualEncoder(nn.Module):
         self.pretrained_model.layer4.register_forward_hook(self.hook_fn("layer4"))  # type: ignore
 
     @torch.no_grad()
-    def forward(self, batch: Tensor) -> OrderedDict[str, Tensor]:
+    def forward(self, batch: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         out: Tensor = self.pretrained_model(batch)
 
-        return self.layers_outputs
+        return (
+            self.layers_outputs["layer2"],
+            self.layers_outputs["layer3"],
+            self.layers_outputs["layer4"],
+        )
 
     def hook_fn(self, layer: str) -> Callable[[nn.Module, Tensor, Tensor], None]:
         def hook(module: nn.Module, input: Tensor, output: Tensor) -> None:

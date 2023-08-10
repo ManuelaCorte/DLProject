@@ -3,6 +3,7 @@ import pickle
 from typing import Any, Dict, List, Tuple
 
 import torch
+from clip import tokenize
 from PIL import Image
 from torch import Tensor, device, tensor
 from torch.utils.data import Dataset
@@ -10,7 +11,6 @@ from torchvision.io import read_image
 from torchvision.ops import box_convert
 
 from vgproject.data.process import preprocess
-from clip import tokenize
 from vgproject.utils.data_types import BatchSample, BboxType, Sample, Split
 from vgproject.utils.misc import transform_sample
 

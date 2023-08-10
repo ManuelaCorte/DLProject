@@ -22,7 +22,7 @@ class Decoder(nn.Module):
         self.pos_embedding_1d = PositionalEncoding1D(d_model, clip_ctx_length).to(
             self.device
         )
-        self.pos_embeddinf_2d = PositionalEncoding2D(d_model, img_size, img_size).to(
+        self.pos_embedding_2d = PositionalEncoding2D(d_model, img_size, img_size).to(
             self.device
         )
         self.decoder = nn.TransformerDecoder(
@@ -37,13 +37,15 @@ class Decoder(nn.Module):
             num_layers=nlayers,
             norm=nn.LayerNorm(d_model, device=self.device),
         )
-        self.reg_token = nn.Parameter(torch.randn(1, 1, d_model)).to(self.device)
+        self.reg_token = nn.Parameter(
+            torch.randn(1, 1, d_model), requires_grad=True
+        ).to(self.device)
         nn.init.kaiming_normal_(self.reg_token, nonlinearity="relu", mode="fan_out")
 
     def forward(self, vis: Tensor, text: Tensor) -> Tensor:
         text_features: Tensor = self.pos_embedding_1d(text)
 
-        visual_features: Tensor = self.pos_embeddinf_2d(vis)
+        visual_features: Tensor = self.pos_embedding_2d(vis)
 
         visual_features = visual_features.flatten(2).permute(0, 2, 1)  # B HW D
 

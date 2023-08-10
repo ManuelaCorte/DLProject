@@ -20,7 +20,6 @@ class Model:
 class Train:
     batch_size: int
     lr: float
-    lr_backbone: float
     l1: float
     l2: float
     sweep: bool

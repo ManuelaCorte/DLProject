@@ -44,7 +44,7 @@ def train(
     )
     lr_scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer=optimizer,
-        max_lr=[cfg.train.lr_backbone, cfg.train.lr],
+        max_lr=[cfg.train.lr],
         epochs=cfg.epochs,
         steps_per_epoch=len(train_dataloader),
     )
