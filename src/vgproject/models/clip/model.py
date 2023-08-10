@@ -73,7 +73,6 @@ class AttentionPool2d(nn.Module):
         self, spacial_dim: int, embed_dim: int, num_heads: int, output_dim: int
     ) -> None:
         super().__init__()
-        self.spacial_dim = spacial_dim
         self.positional_embedding = nn.Parameter(
             torch.randn(spacial_dim**2 + 1, embed_dim) / embed_dim**0.5
         )
@@ -82,31 +81,13 @@ class AttentionPool2d(nn.Module):
         self.v_proj = nn.Linear(embed_dim, embed_dim)
         self.c_proj = nn.Linear(embed_dim, output_dim or embed_dim)
         self.num_heads = num_heads
-        # residual
-        self.connect = nn.Sequential(
-            nn.Conv2d(embed_dim, output_dim, 1),
-            nn.BatchNorm2d(output_dim),
-        )
-
-    def resize_pos_embed(self, pos_embed, input_shape):
-        pos_h = pos_w = self.spacial_dim
-        # Skip the first position embedding as it is the CLS token
-        pos_embed_weight = pos_embed[:, (-1 * pos_h * pos_w) :, :]  # 1 HW C
-        pos_embed_weight = pos_embed_weight.permute(0, 2, 1)
-        return pos_embed_weight
 
     def forward(self, x):
-        B, C, H, W = x.size()
-        # Residual connection
-        residual = self.connect(x)
-
-        x = x.reshape(B, C, -1)  # B C HW
-        pos_embed = self.positional_embedding.unsqueeze(0)
-        pos_embed = self.resize_pos_embed(pos_embed, (H, W))  # 1 C HW
-        x = x + pos_embed.to(x.dtype)  # B C HW
-        x = x.permute(2, 0, 1)  # HW B C (seq_len, batch, embed_dim)
+        x = x.flatten(start_dim=2).permute(2, 0, 1)  # NCHW -> (HW)NC
+        x = torch.cat([x.mean(dim=0, keepdim=True), x], dim=0)  # (HW+1)NC
+        x = x + self.positional_embedding[:, None, :].to(x.dtype)  # (HW+1)NC
         x, _ = F.multi_head_attention_forward(
-            query=x,
+            query=x[:1],
             key=x,
             value=x,
             embed_dim_to_check=x.shape[-1],
@@ -128,11 +109,7 @@ class AttentionPool2d(nn.Module):
             training=self.training,
             need_weights=False,
         )
-        x = x.permute(1, 2, 0).reshape(B, -1, H, W)  # B C H W
-        x = x + residual
-        x = F.relu(x, True)
-
-        return x
+        return x.squeeze(0)
 
 
 class ModifiedResNet(nn.Module):
@@ -213,8 +190,8 @@ class ModifiedResNet(nn.Module):
         return (
             x2,
             x3,
-            x_pooled,
-        )  # (B 512 H/8 W/8) (B, 1024, H/16, W/16) (B, 1024, H/32, W/32)
+            x4,
+        )  # (B 512 H/8 W/8) (B, 1024, H/16, W/16) (B, 2048, H/32, W/32)
 
 
 class LayerNorm(nn.LayerNorm):
@@ -341,7 +318,6 @@ class CLIP(nn.Module):
                 nn.init.normal_(self.visual.attnpool.k_proj.weight, std=std)
                 nn.init.normal_(self.visual.attnpool.v_proj.weight, std=std)
                 nn.init.normal_(self.visual.attnpool.c_proj.weight, std=std)
-                # nn.init.uniform_(self.visual.attnpool.connect.weight)
 
             for resnet_block in [
                 self.visual.layer1,
@@ -491,16 +467,10 @@ def build_model(state_dict: dict[str, Any]):
         transformer_layers,
     )
 
-    # Add the new positional embedding to the state dict
-    state_dict.update(
-        model.visual.attnpool.connect.state_dict(prefix="visual.attnpool.connect.")
-    )
-
     for key in ["input_resolution", "context_length", "vocab_size"]:
         if key in state_dict:
             del state_dict[key]
 
     convert_weights(model)
-
     model.load_state_dict(state_dict)
     return model.eval()

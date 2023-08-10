@@ -34,10 +34,9 @@ class VGModel(nn.Module):
         self.pretrained_model.float()
         del self.clip
 
-        # Freeze all clip parameters except the attention pooling layer
+        # Freeze all clip parameters
         for param in self.pretrained_model.parameters():
             param.requires_grad = False
-        # self.pretrained_model.visual.attnpool.requires_grad_(True)
 
         self.fusion_module: FusionModule = FusionModule(
             embed_dim, cfg.model.clip_embed_dim, cfg.model.proj_img_size

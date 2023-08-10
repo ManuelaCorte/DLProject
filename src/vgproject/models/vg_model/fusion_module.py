@@ -15,10 +15,10 @@ class FusionModule(nn.Module):
         ).to(self.device)
 
         self.vis_l4_projection = _conv_layer(
-            input_dim=clip_emb_dim,
+            input_dim=clip_emb_dim * 2,
             output_dim=clip_emb_dim,
-            kernel_size=1,
-            padding=0,
+            kernel_size=3,
+            padding=1,
             device=self.device,
         )[
             :2
