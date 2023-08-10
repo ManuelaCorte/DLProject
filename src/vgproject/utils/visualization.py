@@ -73,21 +73,11 @@ def find_lr() -> None:
     loss_func = Loss(config.train.l1, config.train.l2)
 
     # Separate parameters to train
-    backbone_params: List[nn.Parameter] = [
-        p for p in model.pretrained_model.parameters() if p.requires_grad
-    ]
-
-    # All parameters except the backbone
-    non_frozen_params: List[nn.Parameter] = [
-        p for p in model.fusion_module.parameters()
-    ]
-    non_frozen_params.extend(model.decoder.parameters())
-    non_frozen_params.extend(model.reg_head.parameters())
+    params: List[nn.Parameter] = [p for p in model.parameters() if p.requires_grad]
 
     optimizer = optim.Adam(
         [
-            {"params": backbone_params, "lr": config.train.lr_backbone},
-            {"params": non_frozen_params, "lr": config.train.lr},
+            {"params": params, "lr": config.train.lr},
         ]
     )
     train_dataset: VGDataset = VGDataset(

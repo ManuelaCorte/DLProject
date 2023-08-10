@@ -35,19 +35,11 @@ def train(
     model: VGModel = VGModel(cfg).train()
 
     # Separate parameters to train
-    backbone_params: List[nn.Parameter] = [
-        p for p in model.pretrained_model.parameters() if p.requires_grad
-    ]
+    params: List[nn.Parameter] = [p for p in model.parameters() if p.requires_grad]
 
-    # All parameters except the backbone parameters
-    non_frozen_params = [
-        p for p in set(model.parameters()) - set(model.pretrained_model.parameters())
-    ]
-    print(len(backbone_params), len(non_frozen_params))
     optimizer = optim.AdamW(
         params=[
-            {"params": backbone_params, "lr": cfg.train.lr_backbone, "weight_decay": 0},
-            {"params": non_frozen_params, "lr": cfg.train.lr, "weight_decay": 1e-4},
+            {"params": params, "lr": cfg.train.lr, "weight_decay": 1e-4},
         ]
     )
     lr_scheduler = optim.lr_scheduler.OneCycleLR(

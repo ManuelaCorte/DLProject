@@ -10,7 +10,7 @@ from torchvision.io import read_image
 from torchvision.ops import box_convert
 
 from vgproject.data.process import preprocess
-from vgproject.models.clip import tokenize
+from clip import tokenize
 from vgproject.utils.data_types import BatchSample, BboxType, Sample, Split
 from vgproject.utils.misc import transform_sample
 

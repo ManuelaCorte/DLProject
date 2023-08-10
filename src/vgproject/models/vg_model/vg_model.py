@@ -6,7 +6,8 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 
 from vgproject.data.dataset import VGDataset
-from vgproject.models.clip.model import CLIP, build_model
+from vgproject.models.vg_model.text_encoder import TextEncoder
+from vgproject.models.vg_model.visual_encoder import VisualEncoder
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, BboxType, Split
 from vgproject.utils.misc import count_parameters, custom_collate
@@ -27,16 +28,11 @@ class VGModel(nn.Module):
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.clip: CLIP = torch.jit.load("../RN50.pt", map_location="cpu").eval()
-        self.pretrained_model: CLIP = build_model(self.clip.state_dict()).to(
-            self.device
-        )
-        self.pretrained_model.float()
-        del self.clip
+        self.visual_encoder = VisualEncoder()
 
-        # Freeze all clip parameters
-        for param in self.pretrained_model.parameters():
-            param.requires_grad = False
+        self.text_encoder = TextEncoder(
+            cfg.train.batch_size, cfg.model.clip_ctx_length, embed_dim
+        )
 
         self.fusion_module: FusionModule = FusionModule(
             embed_dim, cfg.model.clip_embed_dim, cfg.model.proj_img_size
@@ -57,12 +53,12 @@ class VGModel(nn.Module):
 
     def forward(self, batch: List[BatchSample]) -> Tensor:
         # Get text features
-        text_sequence, global_text_features = self.pretrained_model.encode_text(
+        text_sequence, global_text_features = self.text_encoder(
             torch.stack([sample.caption for sample in batch]).squeeze(1).to(self.device)
         )
 
         # Get image features
-        visual_features = self.pretrained_model.encode_image(
+        visual_features = self.visual_encoder(
             torch.stack([sample.image for sample in batch]).to(self.device)
         )
 
