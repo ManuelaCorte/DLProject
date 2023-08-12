@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, OrderedDict
 
 import torch
 import torch.nn as nn
@@ -58,7 +58,7 @@ class VGModel(nn.Module):
         )
 
         # Get image features
-        visual_features = self.visual_encoder(
+        visual_features: OrderedDict[str, Tensor] = self.visual_encoder(
             torch.stack([sample.image for sample in batch]).to(self.device)
         )
 

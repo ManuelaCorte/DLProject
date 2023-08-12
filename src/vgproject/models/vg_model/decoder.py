@@ -31,14 +31,14 @@ class Decoder(nn.Module):
                 nhead=nheads,
                 dim_feedforward=dim_feedforward,
                 batch_first=True,
-                norm_first=True,  # Less prone to vanishing gradients??
+                norm_first=True,
                 device=self.device,
             ),
             num_layers=nlayers,
             norm=nn.LayerNorm(d_model, device=self.device),
         )
         self.reg_token = nn.Parameter(
-            torch.randn(1, 1, d_model), requires_grad=True
+            torch.randn((1, 1, d_model), requires_grad=True)
         ).to(self.device)
         nn.init.kaiming_normal_(self.reg_token, nonlinearity="relu", mode="fan_out")
 

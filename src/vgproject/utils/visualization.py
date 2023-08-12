@@ -14,7 +14,7 @@ from torchviz import make_dot  # type: ignore
 from vgproject.data.dataset import VGDataset
 from vgproject.metrics.loss import Loss
 from vgproject.models.vg_model.vg_model import VGModel
-from vgproject.utils.misc import custom_collate
+from vgproject.utils.misc import custom_collate, count_parameters
 
 from .config import Config
 from .data_types import BatchSample, BboxType, Sample, Split
@@ -119,10 +119,11 @@ def plot_grad_flow(named_parameters: Iterator[Tuple[str, nn.Parameter]]) -> None
     for n, p in named_parameters:
         if (p.requires_grad) and ("bias" not in n):
             if p.grad is None:
-                raise RuntimeError(f"Gradient of {n} is None")
-            layers.append(n)
-            ave_grads.append(p.grad.abs().mean().item())
-            max_grads.append(p.grad.abs().max().item())
+                print(f"None gradient for {n}")
+            else:
+                layers.append(n)
+                ave_grads.append(p.grad.abs().mean().item())
+                max_grads.append(p.grad.abs().max().item())
     plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.1, lw=1, color="c")
     plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.1, lw=1, color="b")
     plt.hlines(0, 0, len(ave_grads) + 1, lw=2, color="k")
@@ -141,27 +142,31 @@ def plot_grad_flow(named_parameters: Iterator[Tuple[str, nn.Parameter]]) -> None
         ],
         ["max-gradient", "mean-gradient", "zero-gradient"],
     )
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":
     config = Config()
 
-    model = VGModel(config).train()
-    train_dataset: VGDataset = VGDataset(
-        dir_path=config.dataset_path,
-        split=Split.TRAIN,
-        output_bbox_type=BboxType.XYWH,
-        augment=True,
-        preprocessed=True,
-    )
-    train_dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
-        dataset=train_dataset,
-        batch_size=config.train.batch_size,
-        collate_fn=custom_collate,
-        num_workers=2,
-        shuffle=True,
-        drop_last=True,
-    )
-    for batch, bbox in train_dataloader:
-        visualize_network(model, batch)
-        break
+    model = VGModel(config)
+    print(count_parameters(model))
+    # plot_grad_flow(model.named_parameters())
+    # train_dataset: VGDataset = VGDataset(
+    #     dir_path=config.dataset_path,
+    #     split=Split.TRAIN,
+    #     output_bbox_type=BboxType.XYWH,
+    #     augment=True,
+    #     preprocessed=True,
+    # )
+    # train_dataloader: DataLoader[Tuple[BatchSample, Tensor]] = DataLoader(
+    #     dataset=train_dataset,
+    #     batch_size=config.train.batch_size,
+    #     collate_fn=custom_collate,
+    #     num_workers=2,
+    #     shuffle=True,
+    #     drop_last=True,
+    # )
+    # for batch, bbox in train_dataloader:
+    #     visualize_network(model, batch)
+    #     break

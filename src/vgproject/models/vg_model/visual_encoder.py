@@ -30,15 +30,10 @@ class VisualEncoder(nn.Module):
         self.pretrained_model.layer3.register_forward_hook(self.hook_fn("layer3"))  # type: ignore
         self.pretrained_model.layer4.register_forward_hook(self.hook_fn("layer4"))  # type: ignore
 
-    @torch.no_grad()
-    def forward(self, batch: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+    # @torch.no_grad()
+    def forward(self, batch: Tensor) -> OrderedDict[str, Tensor]:
         out: Tensor = self.pretrained_model(batch)
-
-        return (
-            self.layers_outputs["layer2"],
-            self.layers_outputs["layer3"],
-            self.layers_outputs["layer4"],
-        )
+        return self.layers_outputs
 
     def hook_fn(self, layer: str) -> Callable[[nn.Module, Tensor, Tensor], None]:
         def hook(module: nn.Module, input: Tensor, output: Tensor) -> None:

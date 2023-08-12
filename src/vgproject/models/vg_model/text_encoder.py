@@ -24,10 +24,12 @@ class TextEncoder(nn.Module):
 
         self.pretrained_model.transformer.register_forward_hook(self.hook_fn())
         self.transformer_output: Tensor = torch.empty(
-            (batch_size, clip_ctx_length, embed_dim), device=self.device
+            (batch_size, clip_ctx_length, embed_dim),
+            requires_grad=True,
+            device=self.device,
         )
 
-    @torch.no_grad()
+    # @torch.no_grad()
     def forward(self, tokenized_caption: Tensor) -> Tuple[Tensor, Tensor]:
         out: Tensor = self.pretrained_model.encode_text(tokenized_caption).to(
             self.device

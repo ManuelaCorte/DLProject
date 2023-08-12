@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -64,9 +64,13 @@ class FusionModule(nn.Module):
         )
 
     def forward(
-        self, visual_features: Tuple[Tensor, Tensor, Tensor], text_features: Tensor
+        self, visual_features: OrderedDict[str, Tensor], text_features: Tensor
     ) -> Tensor:
-        visual_l2_features, visual_l3_features, visual_l4_features = visual_features
+        visual_l2_features, visual_l3_features, visual_l4_features = (
+            visual_features["layer2"],
+            visual_features["layer3"],
+            visual_features["layer4"],
+        )
         # Visual and text features projection
         text_features_proj: Tensor = (
             self.text_projection(text_features).unsqueeze(-1).unsqueeze(-1)
