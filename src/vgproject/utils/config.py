@@ -21,6 +21,7 @@ class Train:
     batch_size: int
     lr: float
     lr_backbone: float
+    step_size: int
     l1: float
     l2: float
     sweep: bool

@@ -214,7 +214,7 @@ class ModifiedResNet(nn.Module):
             x2,
             x3,
             x_pooled,
-        )  # (B 512 H/8 W/8) (B, 1024, H/16, W/16) (B, 1024, H/32, W/32)
+        )  # (B 512 H/8 W/8) (B 1024 H/16 W/16) (B 1024 H/32 W/32)
 
 
 class LayerNorm(nn.LayerNorm):
@@ -341,7 +341,7 @@ class CLIP(nn.Module):
                 nn.init.normal_(self.visual.attnpool.k_proj.weight, std=std)
                 nn.init.normal_(self.visual.attnpool.v_proj.weight, std=std)
                 nn.init.normal_(self.visual.attnpool.c_proj.weight, std=std)
-                # nn.init.uniform_(self.visual.attnpool.connect.weight)
+                nn.init.kaiming_uniform_(self.visual.attnpool.connect[0].weight)
 
             for resnet_block in [
                 self.visual.layer1,
@@ -491,7 +491,7 @@ def build_model(state_dict: dict[str, Any]):
         transformer_layers,
     )
 
-    # Add the new positional embedding to the state dict
+    # Add the new residual connection to the state dict
     state_dict.update(
         model.visual.attnpool.connect.state_dict(prefix="visual.attnpool.connect.")
     )

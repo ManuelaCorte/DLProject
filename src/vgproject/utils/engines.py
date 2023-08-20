@@ -16,14 +16,11 @@ from vgproject.utils.visualization import plot_grad_flow
 
 
 def train_one_epoch(
-    epoch: int,
     dataloader: DataLoader[Tuple[BatchSample, Tensor]],
     model: VGModel,
     loss: Loss,
     optimizer: optim.Optimizer,
-    scheduler: optim.lr_scheduler.OneCycleLR,
     device: device,
-    cfg: Config,
 ) -> Dict[str, float]:
     model.train()
     loss_list: List[Tensor] = []
@@ -43,8 +40,8 @@ def train_one_epoch(
         out: Tensor = model(batch)
 
         # Loss and metrics
-        out_xyxy = box_convert(out, in_fmt="xywh", out_fmt="xyxy").detach()
-        bbox_xyxy = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy").detach()
+        out_xyxy = box_convert(out, in_fmt="xywh", out_fmt="xyxy")
+        bbox_xyxy = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy")
         batch_loss: Tensor = loss.compute(out_xyxy, bbox_xyxy)
 
         # Backward pass
@@ -52,9 +49,10 @@ def train_one_epoch(
         plot_grad_flow(model.named_parameters())
 
         optimizer.step()
-        scheduler.step()
 
-        batch_iou: Tensor = torch.diagonal(box_iou(out_xyxy, bbox_xyxy))
+        out_xyxy_det: Tensor = out_xyxy.detach()
+        bbox_xyxy_det: Tensor = bbox_xyxy.detach()
+        batch_iou: Tensor = torch.diagonal(box_iou(out_xyxy_det, bbox_xyxy_det))
 
         loss_list.append(batch_loss.detach())
         iou_list.append(batch_iou.mean())

@@ -137,8 +137,8 @@ def plot_grad_flow(named_parameters: Iterator[Tuple[str, nn.Parameter]]) -> None
     plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.1, lw=1, color="b")
     plt.hlines(0, 0, len(ave_grads) + 1, lw=2, color="k")
     plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
-    plt.xlim(left=0, right=len(ave_grads))
-    plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    # plt.xlim(left=0, right=len(ave_grads))
+    # plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
     plt.xlabel("Layers")
     plt.ylabel("average gradient")
     plt.title("Gradient flow")

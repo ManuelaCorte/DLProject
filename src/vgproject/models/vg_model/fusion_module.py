@@ -52,6 +52,17 @@ class FusionModule(nn.Module):
             device=self.device,
         )
 
+        self.coord_conv = nn.Sequential(
+            CoordConv(emb_dim + 2, emb_dim),
+            _conv_layer(
+                input_dim=emb_dim,
+                output_dim=emb_dim,
+                kernel_size=3,
+                padding=1,
+                device=self.device,
+            ),
+        )
+
     def forward(
         self, visual_features: Tuple[Tensor, Tensor, Tensor], text_features: Tensor
     ) -> Tensor:
@@ -91,8 +102,40 @@ class FusionModule(nn.Module):
         aggregated_features: Tensor = self.aggregation(
             cat_visual_features
         )  # B 512 14 14
-        # TODO: Add spatial coords?
-        return aggregated_features
+
+        # Add coordinate features
+        final_features: Tensor = self.coord_conv(aggregated_features)  # B 512 14 14
+        return final_features
+
+
+class CoordConv(nn.Module):
+    def __init__(self, in_channels, out_channels) -> None:
+        super().__init__()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.conv: nn.Sequential = _conv_layer(
+            input_dim=in_channels,
+            output_dim=out_channels,
+            kernel_size=3,
+            padding=1,
+            device=self.device,
+        )
+
+    def add_coord(self, input: Tensor) -> Tensor:
+        b, _, h, w = input.size()
+        x_range = torch.linspace(-1, 1, w, device=self.device)
+        y_range = torch.linspace(-1, 1, h, device=self.device)
+
+        y, x = torch.meshgrid(y_range, x_range)
+        y = y.expand([b, 1, -1, -1])
+        x = x.expand([b, 1, -1, -1])
+        coord_feat = torch.cat([x, y], 1)
+        input = torch.cat([input, coord_feat], 1)
+        return input
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.add_coord(x)
+        x = self.conv(x)
+        return x
 
 
 def _conv_layer(
