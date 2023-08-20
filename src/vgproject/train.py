@@ -17,7 +17,7 @@ from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, BboxType, Split
 from vgproject.utils.engines import train_one_epoch, validate
-from vgproject.utils.misc import custom_collate, init_torch
+from vgproject.utils.misc import count_parameters, custom_collate, init_torch
 
 
 def train(
@@ -33,7 +33,6 @@ def train(
     loss_func = Loss(cfg.train.l1, cfg.train.l2)
 
     model: VGModel = VGModel(cfg).train()
-
     # Separate parameters to train
     backbone_params: List[nn.Parameter] = [
         p for p in model.pretrained_model.parameters() if p.requires_grad
@@ -43,19 +42,16 @@ def train(
     non_frozen_params = [
         p for p in set(model.parameters()) - set(model.pretrained_model.parameters())
     ]
-    print(len(backbone_params), len(non_frozen_params))
+    # print(len(backbone_params), len(non_frozen_params))
     optimizer = optim.AdamW(
         params=[
             {"params": backbone_params, "lr": cfg.train.lr_backbone, "weight_decay": 0},
             {"params": non_frozen_params, "lr": cfg.train.lr, "weight_decay": 1e-4},
         ]
     )
-    lr_scheduler = optim.lr_scheduler.OneCycleLR(
-        optimizer=optimizer,
-        max_lr=[cfg.train.lr_backbone, cfg.train.lr],
-        epochs=cfg.epochs,
-        steps_per_epoch=len(train_dataloader),
-    )
+    lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=cfg.train.step_size)
+
+    print("Model parameters: ", count_parameters(model))
 
     if cfg.logging.wandb:
         wandb.watch(model, loss_func, log="all", log_freq=100, log_graph=True)
@@ -63,15 +59,15 @@ def train(
     for epoch in tqdm(range(cfg.epochs), desc="Epochs"):
         print("-------------------- Training --------------------------")
         epoch_train_metrics: Dict[str, float] = train_one_epoch(
-            epoch=epoch,
             dataloader=train_dataloader,
             model=model,
             loss=loss_func,
             optimizer=optimizer,
-            scheduler=lr_scheduler,
             device=device,
-            cfg=cfg,
         )
+
+        lr_scheduler.step()
+
         train_metrics.update_metric(epoch_train_metrics)
         print("Training metrics at epoch ", epoch)
         print(epoch_train_metrics)
