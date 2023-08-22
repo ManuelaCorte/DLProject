@@ -67,9 +67,7 @@ def get_bounding_box(
                 tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYXY.value
             )
         case BboxType.XYWH.name:
-            bounding_box = box_convert(
-                tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.XYWH.value
-            )
+            bounding_box = tensor([bbox])
         case BboxType.CXCWH.name:
             bounding_box = box_convert(
                 tensor([bbox]), in_fmt="xywh", out_fmt=BboxType.CXCWH.value

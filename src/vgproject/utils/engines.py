@@ -20,6 +20,7 @@ def train_one_epoch(
     model: VGModel,
     loss: Loss,
     optimizer: optim.Optimizer,
+    img_size: int,
     device: device,
 ) -> Dict[str, float]:
     model.train()
@@ -40,13 +41,13 @@ def train_one_epoch(
         out: Tensor = model(batch)
 
         # Loss and metrics
-        out_xyxy = box_convert(out, in_fmt="xywh", out_fmt="xyxy")
-        bbox_xyxy = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy")
+        out_xyxy = box_convert(out * img_size, in_fmt="xywh", out_fmt="xyxy")
+        bbox_xyxy = box_convert(bbox * img_size, in_fmt="xywh", out_fmt="xyxy")
         batch_loss: Tensor = loss.compute(out_xyxy, bbox_xyxy)
 
         # Backward pass
         batch_loss.backward()
-        plot_grad_flow(model.named_parameters())
+        # plot_grad_flow(model.named_parameters())
 
         optimizer.step()
 
@@ -81,6 +82,7 @@ def validate(
     dataloader: DataLoader[Tuple[BatchSample, Tensor]],
     model: VGModel,
     loss: Loss,
+    img_size: int,
     device: torch.device,
 ) -> Dict[str, float]:
     # As accuracy we take the average IoU
@@ -100,8 +102,8 @@ def validate(
         # Forward pass
         out: Tensor = model(batch)
 
-        out = box_convert(out, in_fmt="xywh", out_fmt="xyxy").detach()
-        bbox = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy").detach()
+        out = box_convert(out * img_size, in_fmt="xywh", out_fmt="xyxy").detach()
+        bbox = box_convert(bbox * img_size, in_fmt="xywh", out_fmt="xyxy").detach()
 
         batch_loss: Tensor = loss.compute(out, bbox).detach()
         batch_iou: Tensor = torch.diagonal(box_iou(out, bbox)).detach()

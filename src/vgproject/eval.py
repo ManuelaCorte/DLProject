@@ -15,7 +15,7 @@ from vgproject.utils.misc import custom_collate
 
 @torch.no_grad()
 def eval() -> None:
-    cfg = Config.get_instance()  # type: ignore
+    cfg = Config()
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.TEST,
@@ -34,10 +34,11 @@ def eval() -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    checkpoint: Dict[str, Any] = torch.load(cfg.logging["path"])
-    model: VGModel = checkpoint["model"]
+    checkpoint: Dict[str, Any] = torch.load("../model9.pth", map_location=device)
+    model: VGModel = VGModel(cfg)
+    model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
-    loss = Loss(5, 2)
+    loss = Loss(cfg.train.l1, cfg.train.l2)
     losses: List[float] = []
     for batch, gt_bboxes in tqdm(dataloader):
         for sample in batch:
@@ -47,3 +48,7 @@ def eval() -> None:
         batch_loss = loss.compute(predictions, gt_bboxes)
         losses.append(batch_loss.item())
     print(sum(losses) / len(losses))
+
+
+if __name__ == "__main__":
+    eval()
