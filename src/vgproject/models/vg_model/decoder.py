@@ -37,10 +37,10 @@ class Decoder(nn.Module):
             num_layers=nlayers,
             norm=nn.LayerNorm(d_model, device=self.device),
         )
-        self.reg_token = nn.Parameter(
-            torch.randn((1, 1, d_model), requires_grad=True)
-        ).to(self.device)
+
+        self.reg_token = nn.Parameter(torch.randn((1, 1, d_model), requires_grad=True))
         nn.init.kaiming_normal_(self.reg_token, nonlinearity="relu", mode="fan_out")
+        self.register_parameter("reg_token", self.reg_token)
 
     def forward(self, vis: Tensor, text: Tensor) -> Tensor:
         text_features: Tensor = self.pos_embedding_1d(text)

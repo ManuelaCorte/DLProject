@@ -98,6 +98,10 @@ def train(
                         "train": epoch_train_metrics[Metric.IOU.value],
                         "val": epoch_val_metrics[Metric.IOU.value],
                     },
+                    "Accuracy@25": {
+                        "train": epoch_train_metrics[Metric.ACCURACY_25.value],
+                        "val": epoch_val_metrics[Metric.ACCURACY_25.value],
+                    },
                     "Accuracy@50": {
                         "train": epoch_train_metrics[Metric.ACCURACY_50.value],
                         "val": epoch_val_metrics[Metric.ACCURACY_50.value],

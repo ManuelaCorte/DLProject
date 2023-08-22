@@ -6,10 +6,11 @@ from typing import Dict, List
 @dataclass(frozen=True)
 class Metric(Enum):
     LOSS = "loss"
-    ACCURACY_50 = "accuracy"  # IoU > 0.5 -> 1 else 0
+    ACCURACY_25 = "accuracy25"  # IoU > 0.25 -> 1 else 0
+    ACCURACY_50 = "accuracy50"  # IoU > 0.5 -> 1 else 0
     ACCURACY_75 = "accuracy75"  # IoU > 0.75 -> 1 else 0
     ACCURACY_90 = "accuracy90"  # IoU > 0.9 -> 1 else 0
-    IOU = "iou"
+    IOU = "avg_iou"
     COSINE_SIMILARITY = "cosine_similarity"
 
 

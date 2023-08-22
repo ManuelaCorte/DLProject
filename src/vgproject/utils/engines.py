@@ -26,6 +26,7 @@ def train_one_epoch(
     model.train()
     loss_list: List[Tensor] = []
     iou_list: List[Tensor] = []
+    acc_25: List[Tensor] = []
     acc_50: List[Tensor] = []
     acc_75: List[Tensor] = []
     acc_90: List[Tensor] = []
@@ -57,6 +58,7 @@ def train_one_epoch(
 
         loss_list.append(batch_loss.detach())
         iou_list.append(batch_iou.mean())
+        acc_25.append(accuracy(batch_iou, 0.25))
         acc_50.append(accuracy(batch_iou, 0.5))
         acc_75.append(accuracy(batch_iou, 0.75))
         acc_90.append(accuracy(batch_iou, 0.9))
@@ -64,13 +66,14 @@ def train_one_epoch(
         if (idx * len(batch)) % 4096 == 0:
             report: Dict[str, float] = {
                 "Train loss": batch_loss.detach().item(),
-                "Train accurracy": batch_iou.mean().item(),
+                "Train avg iou": batch_iou.mean().item(),
             }
             pprint(f"Batches: {idx}, {report}")
 
     return {
         Metric.LOSS.value: torch.stack(loss_list).mean().item(),
         Metric.IOU.value: torch.stack(iou_list).mean().item(),
+        Metric.ACCURACY_25.value: torch.stack(acc_25).mean().item(),
         Metric.ACCURACY_50.value: torch.stack(acc_50).mean().item(),
         Metric.ACCURACY_75.value: torch.stack(acc_75).mean().item(),
         Metric.ACCURACY_90.value: torch.stack(acc_90).mean().item(),
@@ -89,6 +92,7 @@ def validate(
     model.eval()
     loss_list: List[Tensor] = []
     iou_list: List[Tensor] = []
+    acc_25: List[Tensor] = []
     acc_50: List[Tensor] = []
     acc_75: List[Tensor] = []
     acc_90: List[Tensor] = []
@@ -110,6 +114,7 @@ def validate(
 
         loss_list.append(batch_loss)
         iou_list.append(batch_iou.mean())
+        acc_25.append(accuracy(batch_iou, 0.25))
         acc_50.append(accuracy(batch_iou, 0.5))
         acc_75.append(accuracy(batch_iou, 0.75))
         acc_90.append(accuracy(batch_iou, 0.9))
@@ -117,6 +122,7 @@ def validate(
     return {
         Metric.LOSS.value: torch.stack(loss_list).mean().item(),
         Metric.IOU.value: torch.stack(iou_list).mean().item(),
+        Metric.ACCURACY_25.value: torch.stack(acc_25).mean().item(),
         Metric.ACCURACY_50.value: torch.stack(acc_50).mean().item(),
         Metric.ACCURACY_75.value: torch.stack(acc_75).mean().item(),
         Metric.ACCURACY_90.value: torch.stack(acc_90).mean().item(),

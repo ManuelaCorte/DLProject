@@ -34,7 +34,7 @@ def eval() -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    checkpoint: Dict[str, Any] = torch.load("../model9.pth", map_location=device)
+    checkpoint: Dict[str, Any] = torch.load("../model0.pth", map_location=device)
     model: VGModel = VGModel(cfg)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
@@ -42,7 +42,8 @@ def eval() -> None:
     losses: List[float] = []
     for batch, gt_bboxes in tqdm(dataloader):
         for sample in batch:
-            sample.to(device)
+            sample = sample.to(device)
+        gt_bboxes = gt_bboxes.to(device)
 
         predictions: Tensor = model(batch)
         batch_loss = loss.compute(predictions, gt_bboxes)

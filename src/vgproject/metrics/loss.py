@@ -1,12 +1,12 @@
 import torch.nn as nn
 from torch import Tensor
-from torchvision.ops import distance_box_iou_loss
+from torchvision.ops import generalized_box_iou_loss
 
 
 class Loss:
     def __init__(self, l1: float, l2: float) -> None:
         self.l1_loss = nn.SmoothL1Loss(reduction="mean")
-        self.iou_loss = distance_box_iou_loss
+        self.iou_loss = generalized_box_iou_loss
         self.l1: float = l1
         self.l2: float = l2
         self.loss: Tensor
