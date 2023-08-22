@@ -100,7 +100,8 @@ if __name__ == "__main__":
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.VAL,
-        output_bbox_type=BboxType.XYXY,
+        output_bbox_type=BboxType.XYWH,
+        transform=True,
         augment=True,
         preprocessed=True,
     )

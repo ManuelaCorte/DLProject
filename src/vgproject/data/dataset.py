@@ -51,8 +51,8 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
-        # extended_caption: str = f"find the region that corresponds to the description {self.samples[ref_id].caption}"
-        caption: Tensor = tokenize(self.samples[ref_id].caption, truncate=True)  # type: ignore
+        extended_caption: str = f"find the region that corresponds to the description {self.samples[ref_id].caption}"
+        caption: Tensor = tokenize(extended_caption, truncate=True)  # type: ignore
         if self.transform:
             image, bbox = transform_sample(
                 Image.open(self.samples[ref_id].image_path),
@@ -91,7 +91,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         for caption in captions:
             if len(caption["sent"]) > len(longest_caption["sent"]):
                 longest_caption = caption
-        return f"find the region that corresponds to the description {longest_caption['sent']}"
+        return longest_caption["sent"]
 
     # Bounding boxed converted to format compatible with yolo or torchvision
     def get_bounding_box(self, ann_id: int, instances: Dict[str, Any]) -> Tensor:

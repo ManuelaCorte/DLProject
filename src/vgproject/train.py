@@ -63,6 +63,7 @@ def train(
             model=model,
             loss=loss_func,
             optimizer=optimizer,
+            img_size=cfg.model.img_size,
             device=device,
         )
 
@@ -75,7 +76,11 @@ def train(
         # Evaluate on validation set for hyperparameter tuning
         print("-------------------- Validation ------------------------")
         epoch_val_metrics: Dict[str, float] = validate(
-            val_dataloader, model, loss_func, device
+            dataloader=val_dataloader,
+            model=model,
+            loss=loss_func,
+            img_size=cfg.model.img_size,
+            device=device,
         )
         val_metrics.update_metric(epoch_val_metrics)
         print("Validation metrics at epoch ", epoch)
