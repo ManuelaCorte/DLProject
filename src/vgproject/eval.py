@@ -1,11 +1,14 @@
 import json
 from typing import Any, Dict, List, Tuple
 
+import clip
 import torch
-import torchvision.transforms.functional as T
+import torchvision.transforms as T
+import torchvision.transforms.functional as FT
+from pprint import pprint
 from torch import Tensor
 from torch.utils.data import DataLoader
-from torchvision.ops import box_iou, box_convert
+from torchvision.ops import box_convert, box_iou
 from tqdm import tqdm
 
 from vgproject.data.dataset import VGDataset
@@ -15,7 +18,6 @@ from vgproject.models.vg_model.vg_model import VGModel
 from vgproject.utils.config import Config
 from vgproject.utils.data_types import BatchSample, BboxType, Split
 from vgproject.utils.misc import custom_collate
-import clip
 
 
 @torch.no_grad()
@@ -25,6 +27,7 @@ def eval() -> None:
         dir_path=cfg.dataset_path,
         split=Split.TEST,
         output_bbox_type=BboxType.XYXY,
+        transform=True,
         augment=False,
         preprocessed=True,
     )
@@ -38,14 +41,12 @@ def eval() -> None:
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     checkpoint: Dict[str, Any] = torch.load("../model0.pth", map_location=device)
     model: VGModel = VGModel(cfg)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     loss = Loss(cfg.train.l1, cfg.train.l2)
 
-    metrics: MetricsLogger = MetricsLogger()
     loss_list: List[Tensor] = []
     iou_list: List[Tensor] = []
     acc_25: List[Tensor] = []
@@ -55,11 +56,18 @@ def eval() -> None:
     cos_sim_pred: List[Tensor] = []
     cos_sim_gt: List[Tensor] = []
 
-    for idx, (batch, bboxes) in enumerate(tqdm(dataloader, desc="Batches")):
+    transformation = T.Compose(
+        [
+            T.Resize(cfg.model.img_size),
+            T.CenterCrop(cfg.model.img_size),
+        ]
+    )
+
+    for idx, (batch, bbox) in enumerate(tqdm(dataloader, desc="Batches")):
         # Move to gpu
         for sample in batch:
             sample = sample.to(device)
-        bboxes = bboxes.to(device)
+        bboxes: Tensor = bbox.to(device)
 
         # Forward pass
         out: Tensor = model(batch)
@@ -87,24 +95,54 @@ def eval() -> None:
 
         image_features_gt = torch.stack(
             [
-                T.crop(sample.image, bbox[1], bbox[0], bbox[3], bbox[2])
+                FT.crop(
+                    sample.image,
+                    int(bbox[1].item()),
+                    int(bbox[0].item()),
+                    int(bbox[3].item()),
+                    int(bbox[2].item()),
+                )
                 for sample, bbox in zip(batch, bboxes * cfg.model.img_size)
             ]
         )
         image_features_pred = torch.stack(
             [
-                T.crop(sample.image, bbox[1], bbox[0], bbox[3], bbox[2])
+                FT.crop(
+                    sample.image,
+                    int(bbox[1].item()),
+                    int(bbox[0].item()),
+                    int(bbox[3].item()),
+                    int(bbox[2].item()),
+                )
                 for sample, bbox in zip(batch, out * cfg.model.img_size)
             ]
         )
-        text_features = torch.stack([sample.text for sample in batch])
+        text_features = torch.stack([sample.caption for sample in batch])
         cos_sim_pred.append(
-            compute_cosine_similarity(image_features_pred, text_features)
+            compute_cosine_similarity(
+                image_features_pred, text_features, transformation
+            )
         )
-        cos_sim_gt.append(compute_cosine_similarity(image_features_gt, text_features))
+        cos_sim_gt.append(
+            compute_cosine_similarity(image_features_gt, text_features, transformation)
+        )
 
     json.dump(
         {
+            Metric.LOSS.value: loss_list,
+            Metric.IOU.value: iou_list,
+            Metric.ACCURACY_25.value: acc_25,
+            Metric.ACCURACY_50.value: acc_50,
+            Metric.ACCURACY_75.value: acc_75,
+            Metric.ACCURACY_90.value: acc_90,
+            Metric.COSINE_SIMILARITY.value + " prediction": cos_sim_pred,
+            Metric.COSINE_SIMILARITY.value + " ground truth": cos_sim_gt,
+        },
+        open("test_metrics.json", "w"),
+    )
+
+    pprint(
+        object={
             Metric.LOSS.value: torch.stack(loss_list).mean().item(),
             Metric.IOU.value: torch.stack(iou_list).mean().item(),
             Metric.ACCURACY_25.value: torch.stack(acc_25).mean().item(),
@@ -115,17 +153,16 @@ def eval() -> None:
             + " prediction": torch.stack(cos_sim_pred).mean().item(),
             Metric.COSINE_SIMILARITY.value
             + " ground truth": torch.stack(cos_sim_gt).mean().item(),
-        },
-        open("test_metrics.json", "w"),
+        }
     )
 
-    print(metrics)
 
-
-def compute_cosine_similarity(image_features: Tensor, text_features: Tensor) -> Tensor:
-    clip_model, preprocess = clip.load("RN_50")
-    image_features = clip_model.encode_image(preprocess(image_features))
-    text_features = clip_model.encode_text(text_features)
+def compute_cosine_similarity(
+    image_features: Tensor, text_features: Tensor, transform_func: T.Compose
+) -> Tensor:
+    clip_model, _ = clip.load("RN50")
+    image_features = clip_model.encode_image(transform_func(image_features))
+    text_features = clip_model.encode_text(text_features.squeeze_(1))
 
     image_norm = image_features / image_features.norm(dim=-1, keepdim=True)
     text_norm = text_features / text_features.norm(dim=-1, keepdim=True)
