@@ -86,6 +86,12 @@ def train(
         print("Validation metrics at epoch ", epoch)
         print(epoch_val_metrics)
 
+        if cfg.train.sweep:
+            wandb.log(
+                {
+                    "validation_accuracy": epoch_val_metrics[Metric.IOU.value],
+                }
+            )
         # Log metrics to wandb putting train and val metrics together
         if cfg.logging.wandb:
             wandb.log(

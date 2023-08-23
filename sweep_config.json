@@ -1,7 +1,7 @@
 {
   "name": "vgproject_sweep",
-  "method": "random",
-  "metric": { "name": "Validation accuracy", "goal": "maximize" },
+  "method": "bayes",
+  "metric": { "name": "validation_accuracy", "goal": "maximize" },
   "parameters": {
     "epochs": { "value": 5 },
     "batch_size": { "values": [32, 64, 128] },
