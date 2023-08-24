@@ -7,10 +7,10 @@ from typing import Any, Dict
 class Model:
     clip_embed_dim: int
     clip_ctx_length: int
-    embed_dim: int
-    mlp_hidden_dim: int
     img_size: int
+    mlp_hidden_dim: int
     proj_img_size: int
+    embed_dim: int
     decoder_layers: int
     decoder_heads: int
     decoder_dim_feedforward: int
