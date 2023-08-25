@@ -7,9 +7,9 @@
     "clip_ctx_length": 77,
     "img_size": 224,
 
-    "mlp_hidden_dim": 128,
+    "mlp_hidden_dim": 64,
     "proj_img_size": 14,
-    
+
     "embed_dim": 512,
     "decoder_layers": 3,
     "decoder_heads": 8,
@@ -17,13 +17,13 @@
   },
 
   "train": {
-    "batch_size": 128,
-    "lr": 1e-4,
+    "batch_size": 64,
+    "lr": 5e-5,
     "lr_backbone": 1e-5,
-    "step_size": 20,
+    "step_size": 30,
     "l1": 5.0,
-    "l2": 2.0,
-    "sweep": true
+    "l2": 1.5,
+    "sweep": false
   },
   "logging": {
     "path": "../runs/",
