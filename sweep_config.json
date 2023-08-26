@@ -9,7 +9,8 @@
     "lr_backbone": { "min": 1e-6, "max": 1e-4 },
     "l1": { "min": 3.0, "max": 7.0 },
     "l2": { "min": 1.0, "max": 3.0 },
-    "mlp_hidden_dim": { "values": [64, 128, 256] }
+    "mlp_hidden_dim": { "values": [64, 128, 256] },
+    "activation": {"values": ["sigmoid", "softplus"]}
   },
   "run_cap": 10
 }

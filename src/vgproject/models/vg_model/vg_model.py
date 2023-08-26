@@ -53,8 +53,14 @@ class VGModel(nn.Module):
             cfg.model.decoder_dim_feedforward,
         ).to(self.device)
 
+        activation: nn.Module = (
+            nn.Sigmoid() if cfg.model.activation == "sigmoid" else nn.Softplus()
+        )
         self.reg_head: MLP = MLP(
-            input_dim=embed_dim, output_dim=4, hidden_dim_1=mlp_hidden_dim
+            input_dim=embed_dim,
+            output_dim=4,
+            hidden_dim_1=mlp_hidden_dim,
+            act_func=activation,
         ).to(self.device)
 
     def forward(self, batch: List[BatchSample]) -> Tensor:
@@ -82,13 +88,16 @@ class VGModel(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dim: int, output_dim: int, hidden_dim_1: int) -> None:
+    def __init__(
+        self, input_dim: int, output_dim: int, hidden_dim_1: int, act_func: nn.Module
+    ) -> None:
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, hidden_dim_1),
             nn.BatchNorm1d(hidden_dim_1),
             nn.ReLU(),
             nn.Linear(hidden_dim_1, output_dim),
+            act_func,
         )
 
     def forward(self, x: Tensor) -> Tensor:

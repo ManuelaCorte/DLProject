@@ -42,8 +42,8 @@ def train_one_epoch(
         out: Tensor = model(batch)
 
         # Loss and metrics
-        out_xyxy = box_convert(out * img_size, in_fmt="xywh", out_fmt="xyxy")
-        bbox_xyxy = box_convert(bbox * img_size, in_fmt="xywh", out_fmt="xyxy")
+        out_xyxy = box_convert(out, in_fmt="xywh", out_fmt="xyxy")
+        bbox_xyxy = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy")
         batch_loss: Tensor = loss.compute(out_xyxy, bbox_xyxy)
 
         # Backward pass
@@ -106,8 +106,8 @@ def validate(
         # Forward pass
         out: Tensor = model(batch)
 
-        out = box_convert(out * img_size, in_fmt="xywh", out_fmt="xyxy").detach()
-        bbox = box_convert(bbox * img_size, in_fmt="xywh", out_fmt="xyxy").detach()
+        out = box_convert(out, in_fmt="xywh", out_fmt="xyxy").detach()
+        bbox = box_convert(bbox, in_fmt="xywh", out_fmt="xyxy").detach()
 
         batch_loss: Tensor = loss.compute(out, bbox).detach()
         batch_iou: Tensor = torch.diagonal(box_iou(out, bbox)).detach()

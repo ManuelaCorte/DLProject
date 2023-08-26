@@ -9,6 +9,7 @@ class Model:
     clip_ctx_length: int
     img_size: int
     mlp_hidden_dim: int
+    activation: str
     proj_img_size: int
     embed_dim: int
     decoder_layers: int

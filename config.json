@@ -8,6 +8,7 @@
     "img_size": 224,
 
     "mlp_hidden_dim": 64,
+    "activation": "softplus",
     "proj_img_size": 14,
 
     "embed_dim": 512,

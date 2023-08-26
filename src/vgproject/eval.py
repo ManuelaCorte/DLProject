@@ -21,7 +21,7 @@ from vgproject.utils.misc import custom_collate
 
 
 @torch.no_grad()
-def eval() -> None:
+def eval(model_file: str) -> None:
     cfg = Config()
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
@@ -41,7 +41,9 @@ def eval() -> None:
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    checkpoint: Dict[str, Any] = torch.load("../model0.pth", map_location=device)
+    checkpoint: Dict[str, Any] = torch.load(
+        f"../runs/{model_file}", map_location=device
+    )    
     model: VGModel = VGModel(cfg)
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
@@ -174,4 +176,4 @@ def accuracy(iou: Tensor, threshold: float) -> Tensor:
 
 
 if __name__ == "__main__":
-    eval()
+    eval("model0.pth")
