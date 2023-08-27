@@ -43,18 +43,20 @@ def eval(model_file: str) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     checkpoint: Dict[str, Any] = torch.load(
         f"../runs/{model_file}", map_location=device
-    )    
+    )
     model: VGModel = VGModel(cfg)
     model.load_state_dict(checkpoint["model_state_dict"])
+    model = model.to(device)
     model.eval()
-    loss = Loss(cfg.train.l1, cfg.train.l2)
 
+    loss = Loss(cfg.train.l1, cfg.train.l2)
     loss_list: List[Tensor] = []
     iou_list: List[Tensor] = []
     acc_25: List[Tensor] = []
     acc_50: List[Tensor] = []
     acc_75: List[Tensor] = []
     acc_90: List[Tensor] = []
+    cos_sim_img: List[Tensor] = []
     cos_sim_pred: List[Tensor] = []
     cos_sim_gt: List[Tensor] = []
 
@@ -106,7 +108,7 @@ def eval(model_file: str) -> None:
                 )
                 for sample, bbox in zip(batch, bboxes * cfg.model.img_size)
             ]
-        )
+        ).to(device)
         image_features_pred = torch.stack(
             [
                 FT.crop(
@@ -118,8 +120,8 @@ def eval(model_file: str) -> None:
                 )
                 for sample, bbox in zip(batch, out * cfg.model.img_size)
             ]
-        )
-        text_features = torch.stack([sample.caption for sample in batch])
+        ).to(device)
+        text_features = torch.stack([sample.caption for sample in batch]).to(device)
         cos_sim_pred.append(
             compute_cosine_similarity(
                 image_features_pred, text_features, transformation
@@ -128,19 +130,28 @@ def eval(model_file: str) -> None:
         cos_sim_gt.append(
             compute_cosine_similarity(image_features_gt, text_features, transformation)
         )
+        cos_sim_img.append(
+            compute_cosine_similarity(
+                torch.stack([sample.image for sample in batch]), text_features, None
+            )
+        )
 
     json.dump(
         {
-            Metric.LOSS.value: loss_list,
-            Metric.IOU.value: iou_list,
-            Metric.ACCURACY_25.value: acc_25,
-            Metric.ACCURACY_50.value: acc_50,
-            Metric.ACCURACY_75.value: acc_75,
-            Metric.ACCURACY_90.value: acc_90,
-            Metric.COSINE_SIMILARITY.value + " prediction": cos_sim_pred,
-            Metric.COSINE_SIMILARITY.value + " ground truth": cos_sim_gt,
+            Metric.LOSS.value: torch.stack(loss_list).cpu().numpy().tolist(),
+            Metric.IOU.value: torch.stack(iou_list).cpu().numpy().tolist(),
+            Metric.ACCURACY_25.value: torch.stack(acc_25).cpu().numpy().tolist(),
+            Metric.ACCURACY_50.value: torch.stack(acc_50).cpu().numpy().tolist(),
+            Metric.ACCURACY_75.value: torch.stack(acc_75).cpu().numpy().tolist(),
+            Metric.ACCURACY_90.value: torch.stack(acc_90).cpu().numpy().tolist(),
+            Metric.COSINE_SIMILARITY.value
+            + " prediction": torch.stack(cos_sim_pred).cpu().numpy().tolist(),
+            Metric.COSINE_SIMILARITY.value
+            + " ground truth": torch.stack(cos_sim_gt).cpu().numpy().tolist(),
+            Metric.COSINE_SIMILARITY.value
+            + " image": torch.stack(cos_sim_img).cpu().numpy().tolist(),
         },
-        open("test_metrics.json", "w"),
+        open("../test_metrics.json", "w"),
     )
 
     pprint(
@@ -155,20 +166,24 @@ def eval(model_file: str) -> None:
             + " prediction": torch.stack(cos_sim_pred).mean().item(),
             Metric.COSINE_SIMILARITY.value
             + " ground truth": torch.stack(cos_sim_gt).mean().item(),
+            Metric.COSINE_SIMILARITY.value
+            + " image": torch.stack(cos_sim_img).mean().item(),
         }
     )
 
 
 def compute_cosine_similarity(
-    image_features: Tensor, text_features: Tensor, transform_func: T.Compose
+    image_features: Tensor, text_features: Tensor, transform_func: T.Compose | None
 ) -> Tensor:
-    clip_model, _ = clip.load("RN50")
-    image_features = clip_model.encode_image(transform_func(image_features))
+    if transform_func is not None:
+        image_features = clip_model.encode_image(transform_func(image_features))
+    else:
+        image_features = clip_model.encode_image(image_features)
     text_features = clip_model.encode_text(text_features.squeeze_(1))
 
     image_norm = image_features / image_features.norm(dim=-1, keepdim=True)
     text_norm = text_features / text_features.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.cosine_similarity(image_norm, text_norm, dim=-1)
+    return torch.nn.functional.cosine_similarity(image_norm, text_norm, dim=-1).detach()
 
 
 def accuracy(iou: Tensor, threshold: float) -> Tensor:
@@ -176,4 +191,5 @@ def accuracy(iou: Tensor, threshold: float) -> Tensor:
 
 
 if __name__ == "__main__":
+    clip_model, _ = clip.load("RN50")
     eval("model53.pth")
