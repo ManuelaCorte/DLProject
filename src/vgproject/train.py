@@ -148,17 +148,18 @@ def train(
 
 def initialize_run(sweep: bool = True) -> None:
     config = Config()
+    wandb_run = None
     if sweep:
         load_dotenv()
         wandb.login(key=os.getenv("WANDB_API_KEY"))
-        wandb.init(project="vgproject")
+        wandb_run = wandb.init(project="vgproject")
         wandb_cfg = wandb.config
         config.update(wandb_cfg)
     else:
         if config.logging.wandb:
             load_dotenv()
             wandb.login(key=os.getenv("WANDB_API_KEY"))
-            wandb.init(project="vgproject", config=config.as_dict())
+            wandb_run = wandb.init(project="vgproject", config=config.as_dict())
 
     train_dataset: VGDataset = VGDataset(
         dir_path=config.dataset_path,
@@ -203,7 +204,7 @@ def initialize_run(sweep: bool = True) -> None:
     json.dump(val_metrics.metrics, open("../val_metrics.json", "w"))
 
     if config.logging.wandb:
-        wandb.finish()
+        wandb_run.finish() # type: ignore
 
 
 def main() -> None:

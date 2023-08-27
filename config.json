@@ -1,14 +1,14 @@
 {
   "dataset_path": "../data/raw/refcocog/",
-  "epochs": 60,
+  "epochs": 70,
 
   "model": {
     "clip_embed_dim": 1024,
     "clip_ctx_length": 77,
     "img_size": 224,
 
-    "mlp_hidden_dim": 64,
-    "activation": "softplus",
+    "mlp_hidden_dim": 128,
+    "activation": "sigmoid",
     "proj_img_size": 14,
 
     "embed_dim": 512,
@@ -21,8 +21,8 @@
     "batch_size": 64,
     "lr": 5e-5,
     "lr_backbone": 1e-5,
-    "step_size": 30,
-    "l1": 5.0,
+    "step_size": 25,
+    "l1": 4.0,
     "l2": 1.5,
     "sweep": false
   },

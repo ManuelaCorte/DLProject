@@ -65,10 +65,10 @@ def train_one_epoch(
 
         if (idx * len(batch)) % 4096 == 0:
             report: Dict[str, float] = {
-                "Train loss": batch_loss.detach().item(),
-                "Train avg iou": batch_iou.mean().item(),
+                "Train loss": batch_loss.detach().mean().item(),
+                "Train avg iou": batch_iou.detach().mean().item(),
             }
-            pprint(f"Batches: {idx}, {report}")
+            pprint(report)
 
     return {
         Metric.LOSS.value: torch.stack(loss_list).mean().item(),
