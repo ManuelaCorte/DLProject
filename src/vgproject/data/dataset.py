@@ -61,7 +61,7 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
             )
         else:
             image = read_image(self.samples[ref_id].image_path)
-            bbox = torch.tensor([self.samples[ref_id].bounding_box])
+            bbox = self.samples[ref_id].bounding_box
         return BatchSample(image, caption), bbox
 
     def get_samples(self) -> List[Sample]:

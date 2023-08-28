@@ -204,7 +204,7 @@ def initialize_run(sweep: bool = True) -> None:
     json.dump(val_metrics.metrics, open("../val_metrics.json", "w"))
 
     if config.logging.wandb:
-        wandb_run.finish() # type: ignore
+        wandb_run.finish()  # type: ignore
 
 
 def main() -> None:

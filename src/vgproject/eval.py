@@ -132,7 +132,9 @@ def eval(model_file: str) -> None:
         )
         cos_sim_img.append(
             compute_cosine_similarity(
-                torch.stack([sample.image for sample in batch]), text_features, None
+                torch.stack([sample.image for sample in batch]).to(device),
+                text_features,
+                None,
             )
         )
 

@@ -36,9 +36,7 @@ class Baseline:
         )  # type: ignore
         results: List[Result] = []
 
-        for sample, image_bboxes in tqdm(
-            zip(batch, batch_bbox_predictions, strict=True)
-        ):
+        for sample, image_bboxes in zip(batch, batch_bbox_predictions, strict=True):
             image: Tensor = sample.image
             crops: List[torch.Tensor] = []
             blurs: List[torch.Tensor] = []
@@ -55,7 +53,7 @@ class Baseline:
             if len(crops) == 0:
                 results.append(
                     Result(
-                        torch.tensor([0, 0, 0, 0], device=self.device),
+                        torch.tensor([0, 0, 1, 1], device=self.device),
                         torch.tensor([0], device=self.device),
                     )
                 )
