@@ -28,8 +28,6 @@ class Baseline:
         self.yolo: YOLO = YOLO()
 
     def predict(self, batch: List[BatchSample]) -> List[Result]:
-        # for sample in batch:
-        #     print(f"image: {sample.image.is_cuda}, caption: {sample.caption.is_cuda}")
         images: List[Image.Image] = [ToPILImage()(sample.image) for sample in batch]
         batch_bbox_predictions: List[Results] = self.yolo(
             images, max_det=50, verbose=False, device=self.device
@@ -42,14 +40,17 @@ class Baseline:
             blurs: List[torch.Tensor] = []
             boxes: List[torch.Tensor] = []
 
-            for bbox in image_bboxes.boxes:
+            for bbox in image_bboxes.boxes.xyxy:
                 bbox = bbox.to(self.device)
-                xmin, ymin, xmax, ymax = bbox.xyxy.int()[0]
-                boxes.append(torch.tensor([xmin, ymin, xmax, ymax], device=self.device))
+                xmin, ymin, xmax, ymax = bbox.int()
+
+                crops.append(image[:, ymin:ymax, xmin:xmax])
+                boxes.append(bbox)
+
                 blurred: Tensor = GaussianBlur(25, 50)(sample.image).to(self.device)
                 blurred[:, ymin:ymax, xmin:xmax] = image[:, ymin:ymax, xmin:xmax]
                 blurs.append(blurred)
-                crops.append(image[:, ymin:ymax, xmin:xmax])
+
             if len(crops) == 0:
                 results.append(
                     Result(
@@ -74,16 +75,21 @@ class Baseline:
         blurs: List[torch.Tensor],
         caption: torch.Tensor,
     ) -> torch.Tensor:
-        # text = clip.tokenize(caption)
-        crops = [self.clip_preprocessor(ToPILImage()(crop)) for crop in crops]
-        blurs = [self.clip_preprocessor(ToPILImage()(blur)) for blur in blurs]
-        images_crops: Tensor = torch.stack(tensors=crops).to(device=self.device)
-        # print(images.shape)
-        logits_per_image_crops, _ = self.clip_model(images_crops, caption)
-        images_blurs: Tensor = torch.stack(
-            tensors=blurs,
-        ).to(device=self.device)
-        # print(images.shape)
-        logits_per_image_blurs, _ = self.clip_model(images_blurs, caption)
+        text_features = self.clip_model.encode_text(caption)
+        text_norm = text_features / text_features.norm(dim=-1, keepdim=True)
 
-        return logits_per_image_crops + logits_per_image_blurs
+        cos_sim: List[Tensor] = []
+        for crop, blur in zip(crops, blurs, strict=True):
+            crop_tensor = self.clip_preprocessor(ToPILImage()(crop)).to(self.device)
+            crop_features = self.clip_model.encode_image(crop_tensor.unsqueeze(0))
+            crop_norm = crop_features / crop_features.norm(dim=-1, keepdim=True)
+
+            blurs_tensor = self.clip_preprocessor(ToPILImage()(blur)).to(self.device)
+            blur_features = self.clip_model.encode_image(blurs_tensor.unsqueeze(0))
+            blur_norm = blur_features / blur_features.norm(dim=-1, keepdim=True)
+
+            cos_sim.append(
+                torch.nn.functional.cosine_similarity(crop_norm, text_norm, dim=-1)
+                + torch.nn.functional.cosine_similarity(blur_norm, text_norm, dim=-1)
+            )
+        return torch.stack(cos_sim)

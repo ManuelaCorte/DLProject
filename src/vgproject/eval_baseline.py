@@ -93,7 +93,10 @@ def eval_baseline() -> None:
         )
         bbox_gt: Tensor = bboxes.clone().detach().squeeze(1).to(baseline.device)
 
-        batch_iou: Tensor = torch.diagonal(box_iou(bbox_gt, bbox_pred))
+        box_gt_xyxy = box_convert(bbox_gt, in_fmt="xywh", out_fmt="xyxy")
+        box_pred_xywh = box_convert(bbox_pred, in_fmt="xyxy", out_fmt="xywh")
+
+        batch_iou: Tensor = torch.diagonal(box_iou(box_gt_xyxy, bbox_pred))
 
         iou_list.append(batch_iou.mean())
         acc_25.append(accuracy(batch_iou, 0.25))
@@ -101,8 +104,6 @@ def eval_baseline() -> None:
         acc_75.append(accuracy(batch_iou, 0.75))
         acc_90.append(accuracy(batch_iou, 0.9))
 
-        box_gt_xyxy = box_convert(bbox_gt, in_fmt="xywh", out_fmt="xyxy")
-        box_pred_xywh = box_convert(bbox_pred, in_fmt="xyxy", out_fmt="xywh")
         image_features_gt = torch.stack(
             [
                 FT.crop(
