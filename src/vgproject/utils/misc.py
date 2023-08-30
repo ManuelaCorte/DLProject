@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 import albumentations as A
 import cv2
 import numpy as np
+import random
 import torch
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
@@ -35,8 +36,7 @@ def transform_sample(
     if image.mode != "RGB":
         image = image.convert("RGB")
 
-    # Same transformation as in the CLIP preprocess function
-    if augment:
+    if random.random() <= 0.5 and augment:
         trans = A.Compose(
             transforms=[
                 A.Resize(target_size, target_size, interpolation=cv2.INTER_CUBIC, p=1),
@@ -54,12 +54,12 @@ def transform_sample(
                 A.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0),
                 A.GaussianBlur(),
                 A.PixelDropout(),
-                A.Rotate(limit=20),
                 ToTensorV2(),
             ],
             bbox_params=A.BboxParams(format="coco", label_fields=[]),
         )
     else:
+        # Same transformation as in the CLIP preprocess function
         trans = A.Compose(
             transforms=[
                 A.Resize(target_size, target_size, interpolation=cv2.INTER_CUBIC, p=1),
@@ -78,12 +78,11 @@ def transform_sample(
             bbox_params=A.BboxParams(format="coco", label_fields=[]),
         )
 
-    transformed_sample: Dict[str, Any] = trans(
+    transformed_sample: Dict[str, Any] = trans(  # type: ignore
         image=np.array(image), bboxes=box.tolist()
     )
 
     bbox_tensor: Tensor = torch.tensor(transformed_sample["bboxes"][0]) / target_size
-    # print(bbox_tensor)
     return transformed_sample["image"], bbox_tensor.to(torch.float32)
 
 
@@ -96,6 +95,10 @@ def init_torch(seed: int = 41) -> None:
     np.random.seed(seed)
 
 
+def count_parameters(model: nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 if __name__ == "__main__":
     train_samples = json.load(open("../data/processed/train_samples.json", "r"))[0]
 
@@ -106,7 +109,3 @@ if __name__ == "__main__":
             True,
         )
     )
-
-
-def count_parameters(model: nn.Module) -> int:
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)

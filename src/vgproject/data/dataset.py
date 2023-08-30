@@ -10,7 +10,7 @@ from torchvision.io import read_image
 from torchvision.ops import box_convert
 
 from vgproject.data.process import preprocess
-from vgproject.models.clip import tokenize
+from clip import tokenize
 from vgproject.utils.data_types import BatchSample, BboxType, Sample, Split
 from vgproject.utils.misc import transform_sample
 
@@ -51,15 +51,16 @@ class VGDataset(Dataset[Tuple[BatchSample, Tensor]]):
         return len(self.samples)
 
     def __getitem__(self, ref_id: int) -> Tuple[BatchSample, Tensor]:
-        extended_caption: str = f"find the region that corresponds to the description {self.samples[ref_id].caption}"
-        caption: Tensor = tokenize(extended_caption, truncate=True)  # type: ignore
         if self.transform:
+            extended_caption: str = f"find the region that corresponds to the description {self.samples[ref_id].caption}"
+            caption: Tensor = tokenize(extended_caption, truncate=True)  # type: ignore
             image, bbox = transform_sample(
                 Image.open(self.samples[ref_id].image_path),
                 self.samples[ref_id].bounding_box,
                 self.augment,
             )
         else:
+            caption: Tensor = tokenize(self.samples[ref_id].caption, truncate=True)  # type: ignore
             image = read_image(self.samples[ref_id].image_path)
             bbox = self.samples[ref_id].bounding_box
         return BatchSample(image, caption), bbox
