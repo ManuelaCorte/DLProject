@@ -25,6 +25,7 @@ class Train:
     step_size: int
     l1: float
     l2: float
+    weight_decay: float
     sweep: bool
 
 
