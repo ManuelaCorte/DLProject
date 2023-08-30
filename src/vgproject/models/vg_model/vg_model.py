@@ -97,7 +97,7 @@ class MLP(nn.Module):
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, hidden_dim_1),
             nn.BatchNorm1d(hidden_dim_1),
-            nn.dropout(dropout)
+            nn.dropout(dropout),
             nn.ReLU(),
             nn.Linear(hidden_dim_1, output_dim),
             act_func,
