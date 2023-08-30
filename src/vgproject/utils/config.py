@@ -8,6 +8,7 @@ class Model:
     clip_embed_dim: int
     clip_ctx_length: int
     img_size: int
+    dropout: float
     mlp_hidden_dim: int
     activation: str
     proj_img_size: int
@@ -15,7 +16,6 @@ class Model:
     decoder_layers: int
     decoder_heads: int
     decoder_dim_feedforward: int
-    dropout: float
 
 
 @dataclass
