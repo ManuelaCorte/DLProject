@@ -24,6 +24,7 @@ class VGModel(nn.Module):
         self.cfg: Config = cfg
         embed_dim: int = cfg.model.embed_dim
         mlp_hidden_dim: int = cfg.model.mlp_hidden_dim
+        dropout: float=cfg.model.dropout
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -60,6 +61,7 @@ class VGModel(nn.Module):
             input_dim=embed_dim,
             output_dim=4,
             hidden_dim_1=mlp_hidden_dim,
+            dropout=dropout,
             act_func=activation,
         ).to(self.device)
 
@@ -89,12 +91,13 @@ class VGModel(nn.Module):
 
 class MLP(nn.Module):
     def __init__(
-        self, input_dim: int, output_dim: int, hidden_dim_1: int, act_func: nn.Module
+        self, input_dim: int, output_dim: int, hidden_dim_1: int, dropout:float, act_func: nn.Module
     ) -> None:
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, hidden_dim_1),
             nn.BatchNorm1d(hidden_dim_1),
+            nn.dropout(dropout)
             nn.ReLU(),
             nn.Linear(hidden_dim_1, output_dim),
             act_func,
