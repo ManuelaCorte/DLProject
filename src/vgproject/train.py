@@ -46,7 +46,7 @@ def train(
     optimizer = optim.AdamW(
         params=[
             {"params": backbone_params, "lr": cfg.train.lr_backbone, "weight_decay": 0},
-            {"params": non_frozen_params, "lr": cfg.train.lr, "weight_decay": 1e-4},
+            {"params": non_frozen_params, "lr": cfg.train.lr, "weight_decay": cfg.train.weight_decay},
         ]
     )
     lr_scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=cfg.train.step_size)
