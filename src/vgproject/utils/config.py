@@ -15,6 +15,7 @@ class Model:
     decoder_layers: int
     decoder_heads: int
     decoder_dim_feedforward: int
+    dropout: float
 
 
 @dataclass
