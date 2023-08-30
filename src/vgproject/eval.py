@@ -26,7 +26,7 @@ def eval(model_file: str) -> None:
     dataset = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.TEST,
-        output_bbox_type=BboxType.XYXY,
+        output_bbox_type=BboxType.XYWH,
         transform=True,
         augment=False,
         preprocessed=True,
@@ -185,7 +185,11 @@ def compute_cosine_similarity(
 
     image_norm = image_features / image_features.norm(dim=-1, keepdim=True)
     text_norm = text_features / text_features.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.cosine_similarity(image_norm, text_norm, dim=-1).detach()
+    return (
+        torch.nn.functional.cosine_similarity(image_norm, text_norm, dim=-1)
+        .detach()
+        .squeeze(0)
+    )
 
 
 def accuracy(iou: Tensor, threshold: float) -> Tensor:

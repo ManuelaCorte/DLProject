@@ -31,7 +31,11 @@ def compute_cosine_similarity(
 
     image_norm = image_features / image_features.norm(dim=-1, keepdim=True)
     text_norm = text_features / text_features.norm(dim=-1, keepdim=True)
-    return torch.nn.functional.cosine_similarity(image_norm, text_norm, dim=-1).detach()
+    return (
+        torch.nn.functional.cosine_similarity(image_norm, text_norm, dim=-1)
+        .detach()
+        .squeeze(0)
+    )
 
 
 # Compute the fraction of samples st IoU > threshold
@@ -45,7 +49,7 @@ def eval_baseline() -> None:
     test_data = VGDataset(
         dir_path=cfg.dataset_path,
         split=Split.TEST,
-        output_bbox_type=BboxType.XYXY,
+        output_bbox_type=BboxType.XYWH,
         transform=False,
         augment=False,
         preprocessed=True,
