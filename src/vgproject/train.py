@@ -215,7 +215,7 @@ def main() -> None:
             open("../sweep_config.json", "r")
         )
         sweep: str = wandb.sweep(sweep_configuration, project="vgproject")
-        wandb.agent(sweep_id='utlvbo45', function=initialize_run, count=10)
+        wandb.agent(sweep_id=utlvbo45, function=initialize_run, count=10)
     else:
         initialize_run(cfg.train.sweep)
 
