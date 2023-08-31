@@ -7,7 +7,7 @@
     "clip_ctx_length": 77,
     "img_size": 224,
 
-    "dropout": 0.2,
+    "dropout": 0.3,
     "mlp_hidden_dim": 128,
     "activation": "sigmoid",
     "proj_img_size": 14,
@@ -20,13 +20,13 @@
 
   "train": {
     "batch_size": 64,
-    "lr": 5e-5,
-    "lr_backbone": 1e-5,
+    "lr": 1e-4,
+    "lr_backbone": 5e-5,
     "step_size": 25,
-    "l1": 4.0,
-    "l2": 1.5,
-    "weight_decay": 1e-4,
-    "sweep": true
+    "l1": 3.5,
+    "l2": 2.5,
+    "weight_decay": 1e-3,
+    "sweep": false
   },
   "logging": {
     "path": "../runs/",

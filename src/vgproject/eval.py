@@ -45,9 +45,9 @@ def eval(model_file: str) -> None:
         f"../runs/{model_file}", map_location=device
     )
     model: VGModel = VGModel(cfg)
+    model.eval()
     model.load_state_dict(checkpoint["model_state_dict"])
     model = model.to(device)
-    model.eval()
 
     loss = Loss(cfg.train.l1, cfg.train.l2)
     loss_list: List[Tensor] = []
@@ -198,4 +198,4 @@ def accuracy(iou: Tensor, threshold: float) -> Tensor:
 
 if __name__ == "__main__":
     clip_model, _ = clip.load("RN50")
-    eval("model53.pth")
+    eval("model35.pth")
